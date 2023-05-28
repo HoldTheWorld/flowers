@@ -2,8 +2,9 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const PORT = process.env.DB_PORT ?? 4321;
-
+const PORT = process.env.DB_PORT ?? 3006;
+const userRouter = require('./src/routers/userRouter');
+const flowerRouter = require('./src/routers/flowerRouter');
 const app = express()
 
 app.use(express.json())
@@ -19,8 +20,8 @@ app.get('/', (req, res) => {
 
 http://numbersapi.com/#42
 
-// app.use('/users', userRouter);
-// app.use('/duties', dutyRouter);
+app.use('/flower', flowerRouter);
+app.use('/user', userRouter);
 // app.use('/timings', timingRouter)
 
 app.listen(PORT, () => {

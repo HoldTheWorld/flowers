@@ -6,8 +6,8 @@
   "scripts": {
     "start": "nodemon main.js",
     "connectdb": "nodemon ./src/db/connection.js",
-    "createtabs": "nodemon ./src/db/createTables.js",
-    "droptabs": "nodemon ./src/db/dropTables.js"
+    "createtabs": "node ./src/db/createTables.js",
+    "droptabs": "node ./src/db/dropTables.js"
   },
   "keywords": [],
   "author": "",

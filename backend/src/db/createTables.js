@@ -5,7 +5,7 @@ async function createTables() {
     let result = await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(30) NOT NULL
+        name VARCHAR(30) NOT NULL UNIQUE
       );
       CREATE TABLE IF NOT EXISTS flowers (
         id SERIAL PRIMARY KEY,
@@ -16,7 +16,8 @@ async function createTables() {
       CREATE TABLE IF NOT EXISTS schedules (
         id SERIAL PRIMARY KEY,
         flower_id INTEGER REFERENCES flowers (id) ON DELETE CASCADE,
-        remind_time INTEGER
+        remind_time INTEGER,
+        is_mutted BOOLEAN
       );
     `)
     console.log(result);
