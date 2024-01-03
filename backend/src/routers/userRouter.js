@@ -9,17 +9,18 @@ router.post('/add', async (req, res) => {
     INSERT INTO users (NAME)
     VALUES ('` + req.body.user_name + `')
     `)
-    console.log('user added');
-     res.status(200)
+    res.status(200).json()
   } catch(err) {
-    console.log('user NOT added');
+    console.error('user NOT added: '+ err);
+
     if (err.name == 'SequelizeUniqueConstraintError') {
-      res.status(200).json()
+      return res.status(200).json()
     } else {
+      console.error('Internal server error: ' + err.name);
       res.status(500).json()
     }
   }
-  return res
+
 });
 
 module.exports = router

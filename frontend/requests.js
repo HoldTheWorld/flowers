@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
 import dns from 'node:dns';
 import * as dotenv from 'dotenv'
+import { log } from 'node:console';
 dotenv.config()
 dns.setDefaultResultOrder('ipv4first');
 
@@ -16,12 +17,33 @@ const addUser = async function(user_name) {
         user_name
       })
     })
-    console.log(response.status ? 'ok' : 'Nok');
-
+    return response.ok
   } catch (err) {
-    console.log(err);
+    console.error(err);
   }
+  return false
 }
+
+const checkUser = async function(user_name) {
+  try {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/check/${user_name}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log(result.exists ? 'User exists' : 'User does not exist');
+    } else {
+      console.log('Failed to check user existence. Status:', response.status);
+    }
+  } catch (err) {
+    console.error('Error checking user existence:', err);
+  }
+};
 
 
 const addFlower = async function({user_id, flower_name, watering_frequency}) {
@@ -45,4 +67,4 @@ const addFlower = async function({user_id, flower_name, watering_frequency}) {
   }
 } 
 
-export { addFlower, addUser }
+export { addFlower, addUser, checkUser }
