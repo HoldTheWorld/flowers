@@ -16,8 +16,9 @@ async function createTables() {
       CREATE TABLE IF NOT EXISTS schedules (
         id SERIAL PRIMARY KEY,
         flower_id INTEGER REFERENCES flowers (id) ON DELETE CASCADE,
-        remind_time INTEGER,
-        is_mutted BOOLEAN
+        last_watered INTEGER,
+        is_mutted BOOLEAN,
+        is_fine BOOLEAN
       );
     `)
     console.log(result);

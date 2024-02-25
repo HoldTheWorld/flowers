@@ -3,7 +3,6 @@ const db = require('../db/connection.js');
 
 
 router.post('/add', async (req, res) => {
-  console.log(req.body);
   try {
     await db.query(`
     INSERT INTO users (NAME)
@@ -20,7 +19,32 @@ router.post('/add', async (req, res) => {
       res.status(500).json()
     }
   }
+});
 
+router.get('/getuser', async (req, res) => {
+  console.log('зашли в проверку юзера');
+  try {
+    const username = req.query.username;
+    console.log(username);
+    if (!username) {
+      return res.status(400).json({ error: 'Ошибка' });
+    }
+    const result = await db.query(`
+      SELECT ID
+      FROM users
+      WHERE NAME = '${username}'
+    `);
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    const userId = result[0][0].id;
+
+    res.status(200).json({ user_id: userId });
+  } catch (err) {
+    console.error('Internal server error: ' + err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router
