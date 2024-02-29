@@ -22,10 +22,8 @@ router.post('/add', async (req, res) => {
 });
 
 router.get('/getuser', async (req, res) => {
-  console.log('зашли в проверку юзера');
   try {
     const username = req.query.username;
-    console.log(username);
     if (!username) {
       return res.status(400).json({ error: 'Ошибка' });
     }

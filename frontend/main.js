@@ -1,10 +1,13 @@
 import { Telegraf, Markup  } from 'telegraf';
 import * as dotenv from 'dotenv';
-import { addUser, addFlower, getUserId } from "./requests.js";
+import { addUser, addPlant, getUserId } from "./requests.js";
+import moment from 'moment';
 
 dotenv.config();
 const token = process.env.BOT_TOKEN;
 const bot = new Telegraf(token);
+const watchFreq = moment.duration({ 'seconds': 10 });
+let interval
 
 class Plant {
   constructor() {
@@ -22,7 +25,7 @@ class Plant {
     
   }
 
-  updateFrequency() {
+  updatePlant() {
 
   }
 
@@ -64,26 +67,25 @@ class User {
 }
 
 const presetNewPlant = 'Введите название растения и частоту полива в днях (через пробел)'
-
+const presetIncorrect = 'Введены некорректные значения! Попробуйте снова. Например "Антуриум 7"'
 function yesNoKeyboard() {
   return Markup.inlineKeyboard([
       Markup.button.callback('Да', 'yes'),
       Markup.button.callback('Нет', 'no')
   ])
 }
-
 const mainKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback('Добавить цветок', 'addPlant')],
-  [Markup.button.callback('Полить цветок', 'waterPlant')],
-  [Markup.button.callback('Изменить частоту полива', 'updateFrequency')],
-  [Markup.button.callback('Посмотреть список цветов', 'getPlants')],
-  [Markup.button.callback('Отключить напоминания', 'mutePlant')],
+  [Markup.button.callback('Добавить растения', 'addPlant')],
+  [Markup.button.callback('Полить растение', 'waterPlant')],
+  [Markup.button.callback('Полить все растения', 'updatePlant')],
+  [Markup.button.callback('Изменить частоту полива', 'editPlant')],
+  [Markup.button.callback('Удалить растение', 'deletePlant')],
 ]).resize();
+
 
 //https://github.com/znezniV/iad-telegram-plantbot
 //https://github.com/telegraf/telegraf/issues/705
 // Используйте session middleware
-
 
 bot.action(['yes', 'no'], ctx => {
   if (ctx.callbackQuery.data === 'yes') {
@@ -95,15 +97,22 @@ bot.action(['yes', 'no'], ctx => {
 })
 
 bot.start(async (ctx) => {
-
     const result = await addUser(ctx.message.from.username)
-
     if (result) {
       ctx.reply(`Добро пожаловать, ${ctx.message.from.username}!`, mainKeyboard);
+
+
     } else {
       ctx.reply(`Ошибка. Пожалуйста, попробуйте позднее.`);
     }
 });
+
+function startWatch(user_id) {
+  let plants =  getPlants(user_id)
+  interval = setInterval(chatId => {
+        
+  }, watchFreq, ctx.chat.id);
+}
 
 // bot.use((ctx, next) => {
 //   console.log('enter middleware');
@@ -111,10 +120,8 @@ bot.start(async (ctx) => {
 //   next()
 // })
 
-
 // Обработчик для добавления цветка
-bot.action('addPlant', async (ctx, next) => {
-  
+bot.action('addPlant', async (ctx) => {
   const user_id = await getUserId(ctx.update.callback_query.from.username);
   if (user_id > 0) {
     await ctx.replyWithHTML(presetNewPlant, {
@@ -127,22 +134,54 @@ bot.action('addPlant', async (ctx, next) => {
   }
 });
 
+bot.action('waterPlant', async(ctx) => {
+
+})
+
 bot.on('text', async (ctx) => {
-  // Проверяем, есть ли информация об исходном сообщении
-  if (ctx.message.reply_to_message) {
-      const repliedText = ctx.message.reply_to_message.text;
-      switch (repliedText) {
-        case presetNewPlant:
-          const newPlant = {
-            name: ctx.message.text.split(' ')[0],
-            watering_frequency: ctx.message.text.split(' ')[1]
+  const user_id = await getUserId(ctx.message.from.username);
+  const regExp = /^[^\d]+ \d+(\.\d+)?$/ 
+ // доработать регулярку  
+  if (user_id > 0) {
+      // Проверяем, есть ли информация об исходном сообщении
+      if (ctx.message.reply_to_message) {
+          const repliedText = ctx.message.reply_to_message.text;
+          switch (repliedText) {
+            case presetNewPlant:
+            case presetIncorrect:
+              const input = ctx.message.text.trim().replace(/\s{2,}/g, ' ')
+              if (regExp.test(input)) {
+              // доработать поиск  значений ниже
+                  let plantName = input.split(' ')[0]
+                  let watFreq = parseFloat(input.split(' ')[1])
+                  const newPlant = {
+                    user_id: user_id, 
+                    plant_name: plantName,
+                    watering_frequency: watFreq,
+                    last_watered: moment.now(),
+                    is_fine: true
+                  }
+                  // let msg = `Вы хотите добавить растение  ${newPlant.name} с частотой полива ${newPlant.watering_frequency} ?`
+                  // await ctx.reply(msg, yesNoKeyboard()) // тут спрашивать да - нет не обязательно. оставить для удаления 
+                  const result = await addPlant(newPlant);
+                  if (result) {
+                    ctx.reply(`Растение "${plantName}" с частотой полива ${watFreq.toString()} д. успешно добавлено`, mainKeyboard);
+                  } else {
+                    ctx.reply('Ошибка добавления растения!');
+                  }
+              } else {
+                await ctx.replyWithHTML(presetIncorrect, {
+                  reply_markup: {
+                      force_reply: true,
+                  },
+                });
+              }
+            break; 
           }
-          let msg = `Вы хотите добавить растение  ${newPlant.name} с частотой полива ${newPlant.watering_frequency} ?`
-          await ctx.reply(msg, yesNoKeyboard()) // тут спрашивать да - нет не обязательно. оставить для удаления 
-        break; 
+      } else {
+        ctx.reply('Что вы хотите сделать?', mainKeyboard);
       }
-  } else {
-      console.log('Это обычное текстовое сообщение без ответа.');
+
   }
 });
 
@@ -154,10 +193,10 @@ bot.on('text', async (ctx) => {
 //   console.log(botState);
 
 //   switch (botState.stage) {
-//     case 'flowerName':
+//     case 'plantName':
 //       if (ctx.message && ctx.message.text) {
-//         const flowerName = ctx.message.text;
-//         botState.flowerName = flowerName;
+//         const plantName = ctx.message.text;
+//         botState.plantName = plantName;
         
 //         botState.stage = 'wateringFrequency';
 //         await ctx.reply('Введите частоту полива (в днях):');
@@ -169,13 +208,13 @@ bot.on('text', async (ctx) => {
 //       if (ctx.message && ctx.message.text && /^\d+$/.test(ctx.message.text)) {
 //         const wateringFrequency = parseInt(ctx.message.text);
 
-//         const flowerInfo = {
+//         const plantInfo = {
 //           user_id: userSession.user_id,
-//           flower_name: userSession.flowerName,
+//           plant_name: userSession.plantName,
 //           watering_frequency: wateringFrequency,
 //         };
 
-//         const result = await addFlower(flowerInfo);
+//         const result = await addplant(plantInfo);
 
 //         if (result) {
 //           ctx.reply('Цветок успешно добавлен', mainKeyboard);
@@ -193,8 +232,8 @@ bot.on('text', async (ctx) => {
 
 // // Обработчик для кнопок полива цветков
 // bot.action(/water_(.+)/, async (ctx) => {
-//   const flowerName = ctx.match[1];
-//   ctx.reply(`Полив цветка "${flowerName}" отмечен!`);
+//   const plantName = ctx.match[1];
+//   ctx.reply(`Полив цветка "${plantName}" отмечен!`);
 // });
 
 // // Обработчик для кнопки "Отключить напоминания"

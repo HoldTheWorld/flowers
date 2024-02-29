@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const PORT = process.env.DB_PORT ?? 3006;
 const userRouter = require('./src/routers/userRouter');
-const flowerRouter = require('./src/routers/flowerRouter');
+const plantsRouter = require('./src/routers/plantsRouter');
 const app = express()
 
 app.use(express.json())
@@ -20,7 +20,7 @@ app.get('/', (req, res) => {
 
 http://numbersapi.com/#42
 
-app.use('/flower', flowerRouter);
+app.use('/plant', plantsRouter);
 app.use('/user', userRouter);
 // app.use('/timings', timingRouter)
 

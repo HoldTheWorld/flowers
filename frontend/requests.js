@@ -49,9 +49,9 @@ const getUserId = async function(user_name) {
 };
 
 
-const addFlower = async function({user_id, flower_name, watering_frequency}) {
+const addPlant = async function({user_id, plant_name, watering_frequency, last_watered, is_fine}) {
   try {
-    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/flower/add`, {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/add`, {
       method: 'POST', 
       credentials: 'include',
       headers: {
@@ -59,8 +59,10 @@ const addFlower = async function({user_id, flower_name, watering_frequency}) {
        },
        body: JSON.stringify({ 
         user_id,
-        flower_name,
-        watering_frequency
+        plant_name,
+        watering_frequency,
+        last_watered,
+        is_fine
       })
     })
     return response.ok
@@ -70,16 +72,34 @@ const addFlower = async function({user_id, flower_name, watering_frequency}) {
   return false
 } 
 
-const getFlowers = async function() {
-  console.log('hello from getFlowers');
-  return ['Цветок 1', 'Цветок 2', 'Цветок 3', 'Цветок 4', 'Цветок 5', 'Цветок 6', 'Цветок 7', 'Цветок 8', 'Цветок 9', 'Цветок 10'];
+const getPlants = async function(user_id) {
+  let data = []
+  try {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/getplants?userid=${user_id}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      data = await response.json()
+    } else {
+      const errMsg = await response.json().error;
+      console.log(errMsg);
+    }
+  } catch(err) {
+    console.error(err);
+  }
+  return data;
 }
 
 const updateFrequency = async function() {
   console.log('hello from updateFrequency');
 
 }
-const deleteFlower = async function() {
+const deletePlant = async function() {
   console.log('hello from deleteFlower');
 
 }
@@ -98,4 +118,4 @@ const disableReminder = async function() {
 }
 
 
-export { addUser, addFlower, getUserId, getFlowers, updateFrequency, deleteFlower, disableReminder, updShedule, getTodaysWateringList  }
+export { addUser, addPlant, getUserId, getPlants, updateFrequency, deletePlant, disableReminder, updShedule, getTodaysWateringList  }
