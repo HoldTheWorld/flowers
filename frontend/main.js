@@ -1,12 +1,12 @@
 import { Telegraf, Markup  } from 'telegraf';
 import * as dotenv from 'dotenv';
-import { addUser, addPlant, getUserId } from "./requests.js";
+import { addUser, addPlant, getUserId, getPlants } from "./requests.js";
 import moment from 'moment';
 
 dotenv.config();
 const token = process.env.BOT_TOKEN;
 const bot = new Telegraf(token);
-const watchFreq = moment.duration({ 'seconds': 10 });
+const watchFreq = moment.duration({ 'hours': 12 }); // check
 let interval
 
 class Plant {
@@ -68,24 +68,26 @@ class User {
 
 const presetNewPlant = 'Введите название растения и частоту полива в днях (через пробел)'
 const presetIncorrect = 'Введены некорректные значения! Попробуйте снова. Например "Антуриум 7"'
+
 function yesNoKeyboard() {
   return Markup.inlineKeyboard([
       Markup.button.callback('Да', 'yes'),
       Markup.button.callback('Нет', 'no')
   ])
 }
+// await ctx.reply(msg, yesNoKeyboard())  
+
 const mainKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback('Добавить растения', 'addPlant')],
   [Markup.button.callback('Полить растение', 'waterPlant')],
-  [Markup.button.callback('Полить все растения', 'updatePlant')],
+  [Markup.button.callback('Полить все растения', 'waterAllPlants')], // возможно убрать
   [Markup.button.callback('Изменить частоту полива', 'editPlant')],
   [Markup.button.callback('Удалить растение', 'deletePlant')],
 ]).resize();
 
-
 //https://github.com/znezniV/iad-telegram-plantbot
 //https://github.com/telegraf/telegraf/issues/705
-// Используйте session middleware
+// session middleware
 
 bot.action(['yes', 'no'], ctx => {
   if (ctx.callbackQuery.data === 'yes') {
@@ -100,18 +102,19 @@ bot.start(async (ctx) => {
     const result = await addUser(ctx.message.from.username)
     if (result) {
       ctx.reply(`Добро пожаловать, ${ctx.message.from.username}!`, mainKeyboard);
-
-
+      // начинается наблюдение за 
     } else {
       ctx.reply(`Ошибка. Пожалуйста, попробуйте позднее.`);
     }
 });
 
-function startWatch(user_id) {
+function startWatch(user_id, chat_id) {
   let plants =  getPlants(user_id)
-  interval = setInterval(chatId => {
-        
-  }, watchFreq, ctx.chat.id);
+  interval = setInterval(chat_id => {
+    // проход по базе данных цветов пользователя 
+    // сложение последнего полива и частоты полива 
+    // если превышает текущее время, is_fina = false  , уведомление о поливе 
+  }, watchFreq, chat_id);
 }
 
 // bot.use((ctx, next) => {
@@ -135,15 +138,72 @@ bot.action('addPlant', async (ctx) => {
 });
 
 bot.action('waterPlant', async(ctx) => {
-
+  let user_id = await getUserId(ctx.update.callback_query.from.username);
+  if (user_id > 0) {
+    let plants = getPlants(user_id) // array
+    if (plants.length) {
+      // сформировать список растений в виде кнопок , в конце кнопка - полить все 
+      // а может какие то чекбоксы сделать??? 
+      // при выборе растения (или нескольких) - функция обновляет is_fine = true и время полива на moment.now()
+    } else {
+      // сначала добавьте растение 
+    }
+  }
 })
+
+bot.action('editPlant', async(ctx) => {
+  let user_id = await getUserId(ctx.update.callback_query.from.username);
+  if (user_id > 0) {
+    let plants = getPlants(user_id) // array
+    if (plants.length) {
+      // сформировать список растений в виде кнопок !
+      // при выборе растения - сообщение с force_reply - введите новую частоту полива 
+      // валидация, затем обновление БД
+    } else {
+      // сначала добавьте растение 
+    }
+  }
+})
+
+bot.action('deletePlant', async(ctx) => {
+  let user_id = await getUserId(ctx.update.callback_query.from.username);
+  if (user_id > 0) {
+    let plants = getPlants(user_id) // array
+    if (plants.length) {
+      // сформировать список растений в виде кнопок или чекбоксов 
+      // при выборе растения - yesno - обновление БД - растение удалено 
+    } else {
+      // сначала добавьте растение 
+    }
+  }
+})
+
+function splitInput(inputString) {
+  const regex = /^(.*\S)\s(\d+(\.\d+)?)\s*$/;
+  const matches = inputString.match(regex);
+  const plantData = {}
+  if (matches && matches.length >= 3) {
+    plantData.plant_name = matches[1];
+    const wateringFrequency = parseFloat(matches[2]);
+    if (!isNaN(wateringFrequency)) {
+        plantData.watering_frequency = wateringFrequency;
+    } else {
+        console.log("Ошибка при парсинге частоты полива");
+        return null
+    }
+  } else {
+    console.log("Не удалось найти совпадение");
+    return null
+  }
+  return plantData
+}
+
 
 bot.on('text', async (ctx) => {
   const user_id = await getUserId(ctx.message.from.username);
-  const regExp = /^[^\d]+ \d+(\.\d+)?$/ 
- // доработать регулярку  
+  const regExp = /^.+\s\d+(\.\d+)?$/
+ 
   if (user_id > 0) {
-      // Проверяем, есть ли информация об исходном сообщении
       if (ctx.message.reply_to_message) {
           const repliedText = ctx.message.reply_to_message.text;
           switch (repliedText) {
@@ -151,24 +211,23 @@ bot.on('text', async (ctx) => {
             case presetIncorrect:
               const input = ctx.message.text.trim().replace(/\s{2,}/g, ' ')
               if (regExp.test(input)) {
-              // доработать поиск  значений ниже
-                  let plantName = input.split(' ')[0]
-                  let watFreq = parseFloat(input.split(' ')[1])
+                let plantData = splitInput(input)
+                if (plantData !== null) {
                   const newPlant = {
                     user_id: user_id, 
-                    plant_name: plantName,
-                    watering_frequency: watFreq,
+                    plant_name: plantData.plant_name,
+                    watering_frequency: plantData.watering_frequency,
                     last_watered: moment.now(),
                     is_fine: true
                   }
-                  // let msg = `Вы хотите добавить растение  ${newPlant.name} с частотой полива ${newPlant.watering_frequency} ?`
-                  // await ctx.reply(msg, yesNoKeyboard()) // тут спрашивать да - нет не обязательно. оставить для удаления 
+
                   const result = await addPlant(newPlant);
                   if (result) {
-                    ctx.reply(`Растение "${plantName}" с частотой полива ${watFreq.toString()} д. успешно добавлено`, mainKeyboard);
+                    ctx.reply(`Растение "${plantData.plant_name}" с частотой полива ${plantData.watering_frequency.toString()} д. успешно добавлено`, mainKeyboard);
                   } else {
                     ctx.reply('Ошибка добавления растения!');
                   }
+                }
               } else {
                 await ctx.replyWithHTML(presetIncorrect, {
                   reply_markup: {
@@ -181,7 +240,6 @@ bot.on('text', async (ctx) => {
       } else {
         ctx.reply('Что вы хотите сделать?', mainKeyboard);
       }
-
   }
 });
 

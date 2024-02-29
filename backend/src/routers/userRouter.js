@@ -33,7 +33,7 @@ router.get('/getuser', async (req, res) => {
       WHERE NAME = '${username}'
     `);
 
-    if (result.length === 0) {
+    if (result[0].length === 0) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
     const userId = result[0][0].id;

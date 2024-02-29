@@ -32,13 +32,8 @@ router.get('/getplants', async (req, res) => {
       FROM plants
       WHERE USER_ID = '${userid}'
     `);
-    
-    // if (result.length === 0) {
-    //   // return res.status(404).json({ error: 'Пользователь не найден' });
-    // }
-    // const userId = result[0][0].id;
-    res.status(200)
-    // res.status(200).json({ user_id: userId });
+  
+    res.status(200).json(result[0]);
   } catch (err) {
     console.error('Internal server error: ' + err);
     res.status(500).json({ error: 'Internal server error' });
