@@ -72,10 +72,10 @@ const addPlant = async function({user_id, plant_name, watering_frequency, last_w
   return false
 } 
 
-const getPlants = async function(user_id) {
+const getPlants = async function(user_id, exceptions) {
   let data = []
   try {
-    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/getplants?userid=${user_id}`, {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/getplants?userid=${user_id}&exceptions=${exceptions.join(',')}`, {
       method: 'GET',
       credentials: 'include',
       headers: {

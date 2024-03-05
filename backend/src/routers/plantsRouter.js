@@ -24,14 +24,25 @@ router.post('/add', async (req, res) => {
 router.get('/getplants', async (req, res) => {
   try {
     const userid = req.query.userid;
+    const exceptions = req.query.exceptions;
     if (!userid) {
       return res.status(400).json({ error: 'Ошибка' });
     }
-    const result = await db.query(`
+    let query = `
       SELECT *
       FROM plants
       WHERE USER_ID = '${userid}'
-    `);
+    `;
+    if (exceptions) {
+      const exceptionList = exceptions.split(',').map(exception => `'${exception.trim()}'`).join(', ');
+      query += ` AND ID NOT IN (${exceptionList})`;
+    }
+    const result = await db.query(query);
+    // const result = await db.query(`
+    //   SELECT *
+    //   FROM plants
+    //   WHERE USER_ID = '${userid}'
+    // `);
   
     res.status(200).json(result[0]);
   } catch (err) {

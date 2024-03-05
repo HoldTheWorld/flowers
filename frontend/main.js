@@ -125,6 +125,7 @@ function startWatch(user_id, chat_id) {
 
 // Обработчик для добавления цветка
 bot.action('addPlant', async (ctx) => {
+  await ctx.deleteMessage();
   const user_id = await getUserId(ctx.update.callback_query.from.username);
   if (user_id > 0) {
     await ctx.replyWithHTML(presetNewPlant, {
@@ -138,18 +139,38 @@ bot.action('addPlant', async (ctx) => {
 });
 
 bot.action('waterPlant', async(ctx) => {
+  await ctx.deleteMessage();
   let user_id = await getUserId(ctx.update.callback_query.from.username);
   if (user_id > 0) {
-    let plants = getPlants(user_id) // array
+    let plants = await getPlants(user_id, []) // array
     if (plants.length) {
-      // сформировать список растений в виде кнопок , в конце кнопка - полить все 
-      // а может какие то чекбоксы сделать??? 
-      // при выборе растения (или нескольких) - функция обновляет is_fine = true и время полива на moment.now()
+      let moreButtons = [{name:'Полить все', id: 'select_0'}]
+
+      ctx.reply('Выберите растение для полива', await plantListButtons(plants, moreButtons));
+      // при выборе растения  - функция обновляет is_fine = true и время полива на moment.now()
     } else {
-      // сначала добавьте растение 
+      ctx.reply('В вашем списке нет растений', mainKeyboard);
     }
   }
 })
+
+async function plantListButtons(plants, moreButtons) {
+    const keyPlantList = Markup.inlineKeyboard(
+      plants.map((plant) => [Markup.button.callback(plant.plant_name.trim(), `water_${plant.id}`)])
+    );
+    if (moreButtons.length) {
+      moreButtons.map((button) => keyPlantList.reply_markup.inline_keyboard.push([Markup.button.callback(button.name, button.id)]))
+    }
+    return keyPlantList
+}
+
+bot.action(/water_/, async (ctx) => {
+  await ctx.deleteMessage();
+  const plantId = ctx.callbackQuery.data.replace('water_', '');
+  ctx.reply(`вы выбрали ${plantId}`);
+// в конце должен вернуться массив  с оставшимися растениями (если не политы все) 
+// доработать getPlants и ручку так, чтобы можно было передать доп условия для выборки (список кроме определенных растений)
+});
 
 bot.action('editPlant', async(ctx) => {
   let user_id = await getUserId(ctx.update.callback_query.from.username);
