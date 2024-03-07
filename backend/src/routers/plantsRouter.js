@@ -51,4 +51,43 @@ router.get('/getplants', async (req, res) => {
   }
 });
 
+router.put('/water', async (req, res) => {
+  try {
+    const plantId = req.query.plantid;
+    const time = req.query.time;
+
+    let query = `
+      UPDATE plants p SET 
+      last_watered = ${time},
+      is_fine = true 
+      WHERE p.id = ${plantId}
+    `
+
+    await db.query(query);
+    res.status(200).json();
+  } catch(err) {
+    console.log(err);
+    res.status(502).json();
+  }
+})
+
+router.put('/waterall', async (req, res) => {
+  try {
+    const userId = req.query.userid;
+    const time = req.query.time;
+
+    let query = `
+      UPDATE plants p SET 
+      last_watered = ${time},
+      is_fine = true 
+      WHERE p.user_id = ${userId}
+    `
+    await db.query(query);
+    res.status(200).json();
+  } catch(err) {
+    console.log(err);
+    res.status(502).json();
+  }
+})
+
 module.exports = router

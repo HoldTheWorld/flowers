@@ -1,6 +1,6 @@
 import { Telegraf, Markup  } from 'telegraf';
 import * as dotenv from 'dotenv';
-import { addUser, addPlant, getUserId, getPlants } from "./requests.js";
+import { addUser, addPlant, getUserId, getPlants, waterPlantByPlantId, waterPlantByUserId } from "./requests.js";
 import moment from 'moment';
 
 dotenv.config();
@@ -144,7 +144,7 @@ bot.action('waterPlant', async(ctx) => {
   if (user_id > 0) {
     let plants = await getPlants(user_id, []) // array
     if (plants.length) {
-      let moreButtons = [{name:'Полить все', id: 'select_0'}]
+      let moreButtons = [{name:'Полить все', id: 'water_0'}]
 
       ctx.reply('Выберите растение для полива', await plantListButtons(plants, moreButtons));
       // при выборе растения  - функция обновляет is_fine = true и время полива на moment.now()
@@ -166,11 +166,25 @@ async function plantListButtons(plants, moreButtons) {
 
 bot.action(/water_/, async (ctx) => {
   await ctx.deleteMessage();
+  
   const plantId = ctx.callbackQuery.data.replace('water_', '');
-  ctx.reply(`вы выбрали ${plantId}`);
-// в конце должен вернуться массив  с оставшимися растениями (если не политы все) 
-// доработать getPlants и ручку так, чтобы можно было передать доп условия для выборки (список кроме определенных растений)
+  if (!isNaN(parseFloat(plantId))) {
+    let userId = await getUserId(ctx.update.callback_query.from.username);
+    let waterRes = await waterPlant(parseFloat(plantId), userId)
+    // TODO function should return the number of updated rows, it could be a count of watered plants for the message below
+    waterRes ? ctx.reply(`растение полито  ${plantId}`) : ctx.reply(`Ошибка при обновлении данных! ${plantId}`, mainKeyboard);
+  } else {
+    ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
+  }
 });
+
+async function waterPlant(plantId, userId) {
+  if (plantId === 0) {
+    return waterPlantByUserId(userId, moment.now())
+  } else {
+    return waterPlantByPlantId(plantId, moment.now())
+  }
+}
 
 bot.action('editPlant', async(ctx) => {
   let user_id = await getUserId(ctx.update.callback_query.from.username);

@@ -24,7 +24,6 @@ const addUser = async function(user_name) {
 }
 
 const getUserId = async function(user_name) {
-
   let userId = -1
   try {
     const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/user/getuser?username=${user_name}`, {
@@ -47,7 +46,6 @@ const getUserId = async function(user_name) {
   }
   return userId
 };
-
 
 const addPlant = async function({user_id, plant_name, watering_frequency, last_watered, is_fine}) {
   try {
@@ -95,10 +93,44 @@ const getPlants = async function(user_id, exceptions) {
   return data;
 }
 
+const waterPlantByPlantId = async function(plantId, waterTime) {
+  try {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/water?plantid=${plantId}&time=${waterTime}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })  
+  return response.ok
+  } catch(err) {
+    console.log(err);
+  }
+  return false
+}
+
+const waterPlantByUserId = async function(userId, waterTime) {
+  try {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/waterall?userid=${userId}&time=${waterTime}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })  
+  return response.ok
+  } catch(err) {
+    console.log(err);
+  }
+  return false
+  
+}
+
 const updateFrequency = async function() {
   console.log('hello from updateFrequency');
 
 }
+
 const deletePlant = async function() {
   console.log('hello from deleteFlower');
 
@@ -112,10 +144,7 @@ const getTodaysWateringList = async function() {
 
 }
 
-const disableReminder = async function() {
-  console.log('hello from disableReminder');
-
-}
 
 
-export { addUser, addPlant, getUserId, getPlants, updateFrequency, deletePlant, disableReminder, updShedule, getTodaysWateringList  }
+
+export { addUser, addPlant, getUserId, getPlants, updateFrequency, waterPlantByPlantId, waterPlantByUserId, deletePlant, updShedule, getTodaysWateringList  }
