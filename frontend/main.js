@@ -9,6 +9,16 @@ const bot = new Telegraf(token);
 const watchFreq = moment.duration({ 'hours': 12 }); // check
 let interval
 
+// TODO 
+// имя растения должно быть уникальным для конкретного пользователя (сделать проверку при добавлении растения)
+// функция получения имени растения по айди и наборот 
+// это нужно так как инфа о том, какое растение изменить, передается через имя 
+// функции редактирование частоты полива растения 
+// для подтверждения удаления можно какое то всплывающее окно в телеграм?  
+// в обработчиках кнопок есть общие куски кода - унифицировать валидацию !
+// plants router 33 - проверить что USER_ID будет корректно искать
+
+
 class Plant {
   constructor() {
   }
@@ -68,6 +78,8 @@ class User {
 
 const presetNewPlant = 'Введите название растения и частоту полива в днях (через пробел)'
 const presetIncorrect = 'Введены некорректные значения! Попробуйте снова. Например "Антуриум 7"'
+const presetEditPlant = 'Введите новую частоту полива (в днях одним числом) для растения '
+const presetDeletePlant = 'Подтвердите удаление растения '
 
 function yesNoKeyboard() {
   return Markup.inlineKeyboard([
@@ -89,14 +101,12 @@ const mainKeyboard = Markup.inlineKeyboard([
 //https://github.com/telegraf/telegraf/issues/705
 // session middleware
 
-bot.action(['yes', 'no'], ctx => {
-  if (ctx.callbackQuery.data === 'yes') {
-      // addTask(ctx.session.taskText)
-      // ctx.editMessageText('Ваша задача успешно добавлена')
-  } else {
-      ctx.deleteMessage()
-  }
-})
+// bot.action(['yes', 'no'], ctx => {
+//   if (ctx.callbackQuery.data === 'yes') {
+//   } else {
+//       ctx.deleteMessage()
+//   }
+// })
 
 bot.start(async (ctx) => {
     const result = await addUser(ctx.message.from.username)
@@ -141,12 +151,13 @@ bot.action('addPlant', async (ctx) => {
 bot.action('waterPlant', async(ctx) => {
   await ctx.deleteMessage();
   let user_id = await getUserId(ctx.update.callback_query.from.username);
+  let keyWord = 'water'
   if (user_id > 0) {
     let plants = await getPlants(user_id, []) // array
     if (plants.length) {
       let moreButtons = [{name:'Полить все', id: 'water_0'}]
 
-      ctx.reply('Выберите растение для полива', await plantListButtons(plants, moreButtons));
+      ctx.reply('Выберите растение для полива', await plantListButtons(plants, keyWord, moreButtons));
       // при выборе растения  - функция обновляет is_fine = true и время полива на moment.now()
     } else {
       ctx.reply('В вашем списке нет растений', mainKeyboard);
@@ -154,19 +165,18 @@ bot.action('waterPlant', async(ctx) => {
   }
 })
 
-async function plantListButtons(plants, moreButtons) {
+async function plantListButtons(plants, key, moreButtons) {
     const keyPlantList = Markup.inlineKeyboard(
-      plants.map((plant) => [Markup.button.callback(plant.plant_name.trim(), `water_${plant.id}`)])
+      plants.map((plant) => [Markup.button.callback(plant.plant_name.trim(), key+`_${plant.id}`)])
     );
     if (moreButtons.length) {
       moreButtons.map((button) => keyPlantList.reply_markup.inline_keyboard.push([Markup.button.callback(button.name, button.id)]))
     }
     return keyPlantList
 }
-
+// обработчик кнопок полива
 bot.action(/water_/, async (ctx) => {
   await ctx.deleteMessage();
-  
   const plantId = ctx.callbackQuery.data.replace('water_', '');
   if (!isNaN(parseFloat(plantId))) {
     let userId = await getUserId(ctx.update.callback_query.from.username);
@@ -178,6 +188,48 @@ bot.action(/water_/, async (ctx) => {
   }
 });
 
+// обработчик кнопок редактирования
+bot.action(/edit_/, async(ctx) => {
+  await ctx.deleteMessage();
+  const plantId = ctx.callbackQuery.data.replace('edit_', '');
+  if (!isNaN(parseFloat(plantId))) {
+    let userId = await getUserId(ctx.update.callback_query.from.username);
+    if (userId > 0) {
+      // get plantName !!!
+      await ctx.replyWithHTML(presetEditPlant + plantName, {
+        reply_markup: {
+            force_reply: true,
+        },
+      });
+    } else {
+      ctx.reply('Ошибка пользователя');
+    }
+  } else {
+    ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
+  }
+})
+
+// обработчик кнопок удаления
+bot.action(/delete_/, async(ctx) => {
+  await ctx.deleteMessage();
+  const plantId = ctx.callbackQuery.data.replace('delete_', '');
+  if (!isNaN(parseFloat(plantId))) {
+    let userId = await getUserId(ctx.update.callback_query.from.username);
+    if (userId > 0) {
+      // get plant name!!!
+      await ctx.replyWithHTML(presetDeletePlant + plantName, {
+        reply_markup: {
+            force_reply: true,
+        },
+      });
+    } else {
+      ctx.reply('Ошибка пользователя');
+    }
+  } else {
+    ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
+  }
+})
+
 async function waterPlant(plantId, userId) {
   if (plantId === 0) {
     return waterPlantByUserId(userId, moment.now())
@@ -186,14 +238,15 @@ async function waterPlant(plantId, userId) {
   }
 }
 
+// 
 bot.action('editPlant', async(ctx) => {
   let user_id = await getUserId(ctx.update.callback_query.from.username);
+  let keyWord = 'edit'
   if (user_id > 0) {
-    let plants = getPlants(user_id) // array
+    let plants = await  getPlants(user_id) // array
     if (plants.length) {
-      // сформировать список растений в виде кнопок !
-      // при выборе растения - сообщение с force_reply - введите новую частоту полива 
-      // валидация, затем обновление БД
+      let moreButtons = [{name:'Отмена', id: keyWord+'_0'}]
+      ctx.reply('Выберите растение', await plantListButtons(plants, keyWord, moreButtons));
     } else {
       // сначала добавьте растение 
     }
@@ -227,16 +280,16 @@ function splitInput(inputString) {
         return null
     }
   } else {
-    console.log("Не удалось найти совпадение");
+    console.log("Некорректный ввод");
     return null
   }
   return plantData
 }
 
-
 bot.on('text', async (ctx) => {
   const user_id = await getUserId(ctx.message.from.username);
   const regExp = /^.+\s\d+(\.\d+)?$/
+  let input
  
   if (user_id > 0) {
       if (ctx.message.reply_to_message) {
@@ -244,7 +297,7 @@ bot.on('text', async (ctx) => {
           switch (repliedText) {
             case presetNewPlant:
             case presetIncorrect:
-              const input = ctx.message.text.trim().replace(/\s{2,}/g, ' ')
+              input = ctx.message.text.trim().replace(/\s{2,}/g, ' ')
               if (regExp.test(input)) {
                 let plantData = splitInput(input)
                 if (plantData !== null) {
@@ -269,6 +322,16 @@ bot.on('text', async (ctx) => {
                       force_reply: true,
                   },
                 });
+              }
+            case new RegExp("^" + presetEditPlant + ".*").test(repliedText):
+              input = ctx.message.text.trim() // new watering frequency 
+
+              let plantName = repliedText.replace(new RegExp("^" + presetEditPlant), '') //plant name 
+              if (!isNaN(parseFloat(input)) && !!editPlant ) {
+                // get plant ID by name
+                // const result = await editPlant(parseFloat(input), plantId); // 
+              } else {
+                // 
               }
             break; 
           }

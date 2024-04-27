@@ -70,10 +70,10 @@ const addPlant = async function({user_id, plant_name, watering_frequency, last_w
   return false
 } 
 
-const getPlants = async function(user_id, exceptions) {
+const getPlants = async function(user_id) {
   let data = []
   try {
-    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/getplants?userid=${user_id}&exceptions=${exceptions.join(',')}`, {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/getplants?userid=${user_id}}`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -126,9 +126,20 @@ const waterPlantByUserId = async function(userId, waterTime) {
   
 }
 
-const updateFrequency = async function() {
-  console.log('hello from updateFrequency');
-
+const updateFrequency = async function(plantId, newFreq) {
+  try {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/edit?plantid=${plantId}&newFreq=${newFreq}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })  
+  return response.ok
+  } catch(err) {
+    console.log(err);
+  }
+  return false
 }
 
 const deletePlant = async function() {
