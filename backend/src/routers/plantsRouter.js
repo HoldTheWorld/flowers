@@ -4,19 +4,16 @@ const db = require('../db/connection');
 
 router.post('/add', async (req, res) => {
   console.log(req.body);
+  let query = `
+  INSERT INTO plants (USER_ID, PLANT_NAME, WATERING_FREQUENCY, LAST_WATERED, IS_FINE )
+  VALUES (${req.body.user_id}, '${req.body.plant_name}', ${req.body.watering_frequency}, ${req.body.last_watered}, ${req.body.is_fine})
+`
+
   try {
-    await db.query(`
-      INSERT INTO plants (USER_ID, PLANT_NAME, WATERING_FREQUENCY, LAST_WATERED, IS_FINE )
-      VALUES (`+ req.body.user_id+ `, '
-      `+ req.body.plant_name+ `', 
-      `+ req.body.watering_frequency+ `, 
-      `+ req.body.last_watered+`, 
-      `+ req.body.is_fine+ `)
-    `);
+    await db.query(query);
     res.status(200).json();
   } catch (err) {
     console.log(err);
-    // console.error('Internal server error: ' + err.name);
     res.status(502).json();
   }
 });
@@ -50,10 +47,45 @@ router.get('/getplants', async (req, res) => {
   }
 });
 
+router.get('/getplant', async (req, res) => {
+  try {
+    const { id, name } = req.query;
+    let query, result;
+
+    if (id) {
+      query = `
+        SELECT plant_name
+        FROM plants
+        WHERE id = ${id}
+      `;
+      result = await db.query(query);
+    } else if (name) {
+      query = `
+        SELECT id
+        FROM plants
+        WHERE PLANT_NAME = '${name}'
+      `;
+      result = await db.query(query);
+    } else {
+      return res.status(400).json({ error: 'Необходимо передать параметр id или name' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Растение не найдено' });
+    }
+
+    res.status(200).json(result[0]);
+  } catch (err) {
+    console.error('Internal server error: ' + err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+})
+
 router.put('/water', async (req, res) => {
   try {
-    const plantId = req.query.plantid;
-    const time = req.query.time;
+    const {plantId, time} = req.query
+    // const plantId = req.query.plantid;
+    // const time = req.query.time;
 
     let query = `
       UPDATE plants p SET 
@@ -62,6 +94,25 @@ router.put('/water', async (req, res) => {
       WHERE p.id = ${plantId}
     `
 
+    await db.query(query);
+    res.status(200).json();
+  } catch(err) {
+    console.log(err);
+    res.status(502).json();
+  }
+})
+
+router.put('/edit', async (req, res) => {
+  try {
+    const {plantid, newfreq } = req.query
+    // const plantId = req.query.plantid;
+    // const newFreq = req.query.newfreq;
+
+    let query = `
+      UPDATE plants p SET 
+      watering_frequency = ${newfreq}
+      WHERE p.id = ${plantid}
+    `
     await db.query(query);
     res.status(200).json();
   } catch(err) {

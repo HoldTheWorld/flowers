@@ -73,7 +73,7 @@ const addPlant = async function({user_id, plant_name, watering_frequency, last_w
 const getPlants = async function(user_id) {
   let data = []
   try {
-    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/getplants?userid=${user_id}}`, {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/getplants?userid=${user_id}`, {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -109,6 +109,40 @@ const waterPlantByPlantId = async function(plantId, waterTime) {
   return false
 }
 
+const getPlant = async function(plant_id, plant_name) {
+  let url;
+  let data = '';
+  if (!plant_id && !plant_name) {
+    return data;
+  }
+  try {
+    if (plant_id) {
+      url = `http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/getplant?id=${plant_id}`;
+    } else {
+      url = `http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/getplant?name=${plant_name}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      data = await response.json();
+    } else {
+      const errMsg = await response.json().error;
+      console.log(errMsg);
+    }
+  } catch(err) {
+    console.log(err);
+  }
+  return data;
+}
+
+
 const waterPlantByUserId = async function(userId, waterTime) {
   try {
     const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/waterall?userid=${userId}&time=${waterTime}`, {
@@ -128,7 +162,7 @@ const waterPlantByUserId = async function(userId, waterTime) {
 
 const updateFrequency = async function(plantId, newFreq) {
   try {
-    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/edit?plantid=${plantId}&newFreq=${newFreq}`, {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/edit?plantid=${plantId}&newfreq=${newFreq}`, {
     method: 'PUT',
     credentials: 'include',
     headers: {
@@ -158,4 +192,4 @@ const getTodaysWateringList = async function() {
 
 
 
-export { addUser, addPlant, getUserId, getPlants, updateFrequency, waterPlantByPlantId, waterPlantByUserId, deletePlant, updShedule, getTodaysWateringList  }
+export { addUser, addPlant, getUserId, getPlants, getPlant, updateFrequency, waterPlantByPlantId, waterPlantByUserId, deletePlant, updShedule, getTodaysWateringList  }

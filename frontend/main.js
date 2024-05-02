@@ -1,6 +1,6 @@
 import { Telegraf, Markup  } from 'telegraf';
 import * as dotenv from 'dotenv';
-import { addUser, addPlant, getUserId, getPlants, waterPlantByPlantId, waterPlantByUserId } from "./requests.js";
+import { addUser, addPlant, getUserId, getPlants, getPlant, waterPlantByPlantId, waterPlantByUserId, updateFrequency } from "./requests.js";
 import moment from 'moment';
 
 dotenv.config();
@@ -17,6 +17,7 @@ let interval
 // для подтверждения удаления можно какое то всплывающее окно в телеграм?  
 // в обработчиках кнопок есть общие куски кода - унифицировать валидацию !
 // plants router 33 - проверить что USER_ID будет корректно искать
+// codestyle названия переменных 
 
 
 class Plant {
@@ -196,11 +197,16 @@ bot.action(/edit_/, async(ctx) => {
     let userId = await getUserId(ctx.update.callback_query.from.username);
     if (userId > 0) {
       // get plantName !!!
-      await ctx.replyWithHTML(presetEditPlant + plantName, {
-        reply_markup: {
-            force_reply: true,
-        },
-      });
+      let plantName = await getPlant(plantId)
+      if (plantName.length) {
+        await ctx.replyWithHTML(presetEditPlant + plantName[0].plant_name.trim(), {
+          reply_markup: {
+              force_reply: true,
+          },
+        });
+      } else {
+        ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
+      }
     } else {
       ctx.reply('Ошибка пользователя');
     }
@@ -243,7 +249,7 @@ bot.action('editPlant', async(ctx) => {
   let user_id = await getUserId(ctx.update.callback_query.from.username);
   let keyWord = 'edit'
   if (user_id > 0) {
-    let plants = await  getPlants(user_id) // array
+    let plants = await getPlants(user_id) // array
     if (plants.length) {
       let moreButtons = [{name:'Отмена', id: keyWord+'_0'}]
       ctx.reply('Выберите растение', await plantListButtons(plants, keyWord, moreButtons));
@@ -292,52 +298,61 @@ bot.on('text', async (ctx) => {
   let input
  
   if (user_id > 0) {
-      if (ctx.message.reply_to_message) {
-          const repliedText = ctx.message.reply_to_message.text;
-          switch (repliedText) {
-            case presetNewPlant:
-            case presetIncorrect:
-              input = ctx.message.text.trim().replace(/\s{2,}/g, ' ')
-              if (regExp.test(input)) {
-                let plantData = splitInput(input)
-                if (plantData !== null) {
-                  const newPlant = {
-                    user_id: user_id, 
-                    plant_name: plantData.plant_name,
-                    watering_frequency: plantData.watering_frequency,
-                    last_watered: moment.now(),
-                    is_fine: true
-                  }
-
-                  const result = await addPlant(newPlant);
-                  if (result) {
-                    ctx.reply(`Растение "${plantData.plant_name}" с частотой полива ${plantData.watering_frequency.toString()} д. успешно добавлено`, mainKeyboard);
-                  } else {
-                    ctx.reply('Ошибка добавления растения!');
-                  }
-                }
-              } else {
-                await ctx.replyWithHTML(presetIncorrect, {
-                  reply_markup: {
-                      force_reply: true,
-                  },
-                });
-              }
-            case new RegExp("^" + presetEditPlant + ".*").test(repliedText):
-              input = ctx.message.text.trim() // new watering frequency 
-
-              let plantName = repliedText.replace(new RegExp("^" + presetEditPlant), '') //plant name 
-              if (!isNaN(parseFloat(input)) && !!editPlant ) {
-                // get plant ID by name
-                // const result = await editPlant(parseFloat(input), plantId); // 
-              } else {
-                // 
-              }
-            break; 
+    if (ctx.message.reply_to_message) {
+      const repliedText = ctx.message.reply_to_message.text;
+      
+      // Проверяем условия с помощью if/else
+      if (repliedText === presetNewPlant || repliedText === presetIncorrect) {
+        input = ctx.message.text.trim().replace(/\s{2,}/g, ' ')
+        if (regExp.test(input)) {
+          let plantData = splitInput(input)
+          if (plantData !== null) {
+            const newPlant = {
+              user_id: user_id, 
+              plant_name: plantData.plant_name,
+              watering_frequency: plantData.watering_frequency,
+              last_watered: moment.now(),
+              is_fine: true
+            }
+            const result = await addPlant(newPlant);
+            if (result) {
+              ctx.reply(`Растение "${plantData.plant_name}" с частотой полива ${plantData.watering_frequency.toString()} д. успешно добавлено`, mainKeyboard);
+            } else {
+              ctx.reply('Ошибка добавления растения!');
+            }
           }
+        } else {
+          await ctx.replyWithHTML(presetIncorrect, {
+            reply_markup: {
+              force_reply: true,
+            },
+          });
+        }
+      } else if (new RegExp("^" + presetEditPlant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ".*").test(repliedText)) {
+        // Ваш код для редактирования частоты полива
+        input = ctx.message.text.trim() // new watering frequency 
+        let plantName = repliedText.replace(new RegExp("^" + presetEditPlant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), '')
+        if (isNaN(parseFloat(input)) || !plantName.length ) {
+          ctx.reply('Непредвиденная ошибка', mainKeyboard);
+        } else {
+          let plantId = await getPlant(null, plantName)
+          if (!plantId) {
+            ctx.reply('Непредвиденная ошибка', mainKeyboard);
+          } else {
+            let result = await updateFrequency(plantId[0].id, parseFloat(input));
+            if (result) {
+              ctx.reply('Данные обновлены', mainKeyboard);
+            } else {
+              ctx.reply('Непредвиденная ошибка', mainKeyboard);
+            }
+          }
+        }
       } else {
         ctx.reply('Что вы хотите сделать?', mainKeyboard);
       }
+    } else {
+      ctx.reply('Что вы хотите сделать?', mainKeyboard);
+    }
   }
 });
 
