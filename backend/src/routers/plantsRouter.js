@@ -121,6 +121,23 @@ router.put('/edit', async (req, res) => {
   }
 })
 
+router.delete('/delete', async (req, res) => {
+  try {
+    const plantId = req.query.plantid
+    let query =  `
+    DELETE FROM plants 
+    WHERE id = ${plantId}
+    `
+    await db.query(query)
+    res.status(200).json();
+  } catch (err) {
+    console.log(err);
+    res.status(502).json();
+  }
+})
+
+
+
 router.put('/waterall', async (req, res) => {
   try {
     const userId = req.query.userid;

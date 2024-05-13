@@ -1,6 +1,6 @@
 import { Telegraf, Markup  } from 'telegraf';
 import * as dotenv from 'dotenv';
-import { addUser, addPlant, getUserId, getPlants, getPlant, waterPlantByPlantId, waterPlantByUserId, updateFrequency } from "./requests.js";
+import { addUser, addPlant, getUserId, getPlants, getPlant, waterPlantByPlantId, waterPlantByUserId, updateFrequency, deletePlant } from "./requests.js";
 import moment from 'moment';
 
 dotenv.config();
@@ -18,64 +18,6 @@ let interval
 // в обработчиках кнопок есть общие куски кода - унифицировать валидацию !
 // plants router 33 - проверить что USER_ID будет корректно искать
 // codestyle названия переменных 
-
-
-class Plant {
-  constructor() {
-  }
-
-  addName(name) {
-    this.name = name
-  }
-
-  addFrequensy(frequensy) {
-    this.frequensy = frequensy
-  }
-
-  waterPlant() {
-    
-  }
-
-  updatePlant() {
-
-  }
-
-  checkState() {
-
-  }
-
-  mutePlant() {
-
-  }
-
-  deletePlant() {
-
-  }
-
-  addPlant() {
-
-  }
-
-}
-
-class User {
-  constructor(name) {
-    this.name = name
-
-  }
-
-  setUserId(id) {
-    this.id = id
-  }
-
-  getPlants() {
-
-  }
-
-  removeAllPlants() {
-
-  }
-}
 
 const presetNewPlant = 'Введите название растения и частоту полива в днях (через пробел)'
 const presetIncorrect = 'Введены некорректные значения! Попробуйте снова. Например "Антуриум 7"'
@@ -149,6 +91,37 @@ bot.action('addPlant', async (ctx) => {
   }
 });
 
+// обработчик для вывода списка к редактированию
+bot.action('editPlant', async(ctx) => {
+  let user_id = await getUserId(ctx.update.callback_query.from.username);
+  let keyWord = 'edit'
+  if (user_id > 0) {
+    let plants = await getPlants(user_id) // array
+    if (plants.length) {
+      let moreButtons = [{name:'Отмена', id: keyWord+'_0'}]
+      ctx.reply('Выберите растение', await plantListButtons(plants, keyWord, moreButtons));
+    } else {
+      ctx.reply(`Вы не добавили ни одного растения`, mainKeyboard)
+    }
+  }
+})
+
+// обработчик для вывода списка к удалению
+bot.action('deletePlant', async(ctx) => {
+  let user_id = await getUserId(ctx.update.callback_query.from.username);
+  let keyWord = 'delete'  
+  if (user_id > 0) {
+    let plants = await getPlants(user_id) // array
+    if (plants.length) {
+      let moreButtons = [{name:'Отмена', id: keyWord+'_0'}]
+      ctx.reply('Выберите растение', await plantListButtons(plants, keyWord, moreButtons));
+    } else {
+      ctx.reply(`Вы не добавили ни одного растения`, mainKeyboard)
+    }
+  }
+})
+
+// обработчик для вывода списка к поливу
 bot.action('waterPlant', async(ctx) => {
   await ctx.deleteMessage();
   let user_id = await getUserId(ctx.update.callback_query.from.username);
@@ -166,29 +139,6 @@ bot.action('waterPlant', async(ctx) => {
   }
 })
 
-async function plantListButtons(plants, key, moreButtons) {
-    const keyPlantList = Markup.inlineKeyboard(
-      plants.map((plant) => [Markup.button.callback(plant.plant_name.trim(), key+`_${plant.id}`)])
-    );
-    if (moreButtons.length) {
-      moreButtons.map((button) => keyPlantList.reply_markup.inline_keyboard.push([Markup.button.callback(button.name, button.id)]))
-    }
-    return keyPlantList
-}
-// обработчик кнопок полива
-bot.action(/water_/, async (ctx) => {
-  await ctx.deleteMessage();
-  const plantId = ctx.callbackQuery.data.replace('water_', '');
-  if (!isNaN(parseFloat(plantId))) {
-    let userId = await getUserId(ctx.update.callback_query.from.username);
-    let waterRes = await waterPlant(parseFloat(plantId), userId)
-    // TODO function should return the number of updated rows, it could be a count of watered plants for the message below
-    waterRes ? ctx.reply(`растение полито  ${plantId}`) : ctx.reply(`Ошибка при обновлении данных! ${plantId}`, mainKeyboard);
-  } else {
-    ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
-  }
-});
-
 // обработчик кнопок редактирования
 bot.action(/edit_/, async(ctx) => {
   await ctx.deleteMessage();
@@ -196,7 +146,6 @@ bot.action(/edit_/, async(ctx) => {
   if (!isNaN(parseFloat(plantId))) {
     let userId = await getUserId(ctx.update.callback_query.from.username);
     if (userId > 0) {
-      // get plantName !!!
       let plantName = await getPlant(plantId)
       if (plantName.length) {
         await ctx.replyWithHTML(presetEditPlant + plantName[0].plant_name.trim(), {
@@ -222,12 +171,17 @@ bot.action(/delete_/, async(ctx) => {
   if (!isNaN(parseFloat(plantId))) {
     let userId = await getUserId(ctx.update.callback_query.from.username);
     if (userId > 0) {
-      // get plant name!!!
-      await ctx.replyWithHTML(presetDeletePlant + plantName, {
-        reply_markup: {
-            force_reply: true,
-        },
-      });
+      let plantName = await getPlant(plantId)
+      if (plantName.length) { 
+        const result = await deletePlant(plantId)
+        if (result) {
+          ctx.reply(`Растение "${plantName[0].plant_name.trim()}" ,было удалено.`, mainKeyboard);
+        } else {
+          ctx.reply('Ошибка удаления растения!');
+        }
+      } else {
+        ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
+      }
     } else {
       ctx.reply('Ошибка пользователя');
     }
@@ -236,61 +190,21 @@ bot.action(/delete_/, async(ctx) => {
   }
 })
 
-async function waterPlant(plantId, userId) {
-  if (plantId === 0) {
-    return waterPlantByUserId(userId, moment.now())
+// обработчик кнопок полива
+bot.action(/water_/, async (ctx) => {
+  await ctx.deleteMessage();
+  const plantId = ctx.callbackQuery.data.replace('water_', '');
+  if (!isNaN(parseFloat(plantId))) {
+    let userId = await getUserId(ctx.update.callback_query.from.username);
+    let waterRes = await waterPlant(parseFloat(plantId), userId)
+    // TODO function should return the number of updated rows, it could be a count of watered plants for the message below
+    waterRes ? ctx.reply(`растение полито  ${plantId}`) : ctx.reply(`Ошибка при обновлении данных! ${plantId}`, mainKeyboard);
   } else {
-    return waterPlantByPlantId(plantId, moment.now())
+    ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
   }
-}
+});
 
-// 
-bot.action('editPlant', async(ctx) => {
-  let user_id = await getUserId(ctx.update.callback_query.from.username);
-  let keyWord = 'edit'
-  if (user_id > 0) {
-    let plants = await getPlants(user_id) // array
-    if (plants.length) {
-      let moreButtons = [{name:'Отмена', id: keyWord+'_0'}]
-      ctx.reply('Выберите растение', await plantListButtons(plants, keyWord, moreButtons));
-    } else {
-      // сначала добавьте растение 
-    }
-  }
-})
 
-bot.action('deletePlant', async(ctx) => {
-  let user_id = await getUserId(ctx.update.callback_query.from.username);
-  if (user_id > 0) {
-    let plants = getPlants(user_id) // array
-    if (plants.length) {
-      // сформировать список растений в виде кнопок или чекбоксов 
-      // при выборе растения - yesno - обновление БД - растение удалено 
-    } else {
-      // сначала добавьте растение 
-    }
-  }
-})
-
-function splitInput(inputString) {
-  const regex = /^(.*\S)\s(\d+(\.\d+)?)\s*$/;
-  const matches = inputString.match(regex);
-  const plantData = {}
-  if (matches && matches.length >= 3) {
-    plantData.plant_name = matches[1];
-    const wateringFrequency = parseFloat(matches[2]);
-    if (!isNaN(wateringFrequency)) {
-        plantData.watering_frequency = wateringFrequency;
-    } else {
-        console.log("Ошибка при парсинге частоты полива");
-        return null
-    }
-  } else {
-    console.log("Некорректный ввод");
-    return null
-  }
-  return plantData
-}
 
 bot.on('text', async (ctx) => {
   const user_id = await getUserId(ctx.message.from.username);
@@ -300,9 +214,8 @@ bot.on('text', async (ctx) => {
   if (user_id > 0) {
     if (ctx.message.reply_to_message) {
       const repliedText = ctx.message.reply_to_message.text;
-      
-      // Проверяем условия с помощью if/else
-      if (repliedText === presetNewPlant || repliedText === presetIncorrect) {
+      // добавление нового растения 
+      if (repliedText === presetNewPlant || repliedText === presetIncorrect) { 
         input = ctx.message.text.trim().replace(/\s{2,}/g, ' ')
         if (regExp.test(input)) {
           let plantData = splitInput(input)
@@ -328,8 +241,8 @@ bot.on('text', async (ctx) => {
             },
           });
         }
+      // редактирование частоты полива 
       } else if (new RegExp("^" + presetEditPlant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ".*").test(repliedText)) {
-        // Ваш код для редактирования частоты полива
         input = ctx.message.text.trim() // new watering frequency 
         let plantName = repliedText.replace(new RegExp("^" + presetEditPlant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), '')
         if (isNaN(parseFloat(input)) || !plantName.length ) {
@@ -356,7 +269,45 @@ bot.on('text', async (ctx) => {
   }
 });
 
+async function waterPlant(plantId, userId) {
+  if (plantId === 0) {
+    return waterPlantByUserId(userId, moment.now())
+  } else {
+    return waterPlantByPlantId(plantId, moment.now())
+  }
+}
 
+//функция для получения списка растений в виде кнопок + доп кнопки при необходимости 
+async function plantListButtons(plants, key, moreButtons) {
+  const keyPlantList = Markup.inlineKeyboard(
+    plants.map((plant) => [Markup.button.callback(plant.plant_name.trim(), key+`_${plant.id}`)])
+  );
+  if (moreButtons.length) {
+    moreButtons.map((button) => keyPlantList.reply_markup.inline_keyboard.push([Markup.button.callback(button.name, button.id)]))
+  }
+  return keyPlantList
+}
+
+// функция преобразует входящую строку "имя растения частота полива " в объект Имя: имя, частота: частота (число), либо возвращает null в случае ошибки 
+function splitInput(inputString) {
+  const regex = /^(.*\S)\s(\d+(\.\d+)?)\s*$/;
+  const matches = inputString.match(regex);
+  const plantData = {}
+  if (matches && matches.length >= 3) {
+    plantData.plant_name = matches[1];
+    const wateringFrequency = parseFloat(matches[2]);
+    if (!isNaN(wateringFrequency)) {
+        plantData.watering_frequency = wateringFrequency;
+    } else {
+        console.log("Ошибка при парсинге частоты полива");
+        return null
+    }
+  } else {
+    console.log("Некорректный ввод");
+    return null
+  }
+  return plantData
+}
 
 // // Обработчик для ввода названия цветка и частоты полива
 // bot.on('text', async (ctx) => {

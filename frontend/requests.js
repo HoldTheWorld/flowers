@@ -176,10 +176,23 @@ const updateFrequency = async function(plantId, newFreq) {
   return false
 }
 
-const deletePlant = async function() {
-  console.log('hello from deleteFlower');
-
+const deletePlant = async function(plantId) {
+  try {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/delete?plantid=${plantId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }) 
+    return response.ok 
+  } catch(err) {
+    console.log(err);
+  }
+  return false
 }
+
+
 const updShedule = async function() {
   console.log('hello from updShedule');
 
