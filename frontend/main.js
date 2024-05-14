@@ -18,6 +18,8 @@ let interval
 // в обработчиках кнопок есть общие куски кода - унифицировать валидацию !
 // plants router 33 - проверить что USER_ID будет корректно искать
 // codestyle названия переменных 
+// наладить процесс удаления - если сообщению больше Х часов то все падает 
+// return в обработке ошибок в роутере 
 
 const presetNewPlant = 'Введите название растения и частоту полива в днях (через пробел)'
 const presetIncorrect = 'Введены некорректные значения! Попробуйте снова. Например "Антуриум 7"'
@@ -103,6 +105,8 @@ bot.action('editPlant', async(ctx) => {
     } else {
       ctx.reply(`Вы не добавили ни одного растения`, mainKeyboard)
     }
+  } else {
+    ctx.reply('Ошибка пользователя');
   }
 })
 
@@ -118,6 +122,8 @@ bot.action('deletePlant', async(ctx) => {
     } else {
       ctx.reply(`Вы не добавили ни одного растения`, mainKeyboard)
     }
+  } else {
+    ctx.reply('Ошибка пользователя');
   }
 })
 
@@ -136,7 +142,21 @@ bot.action('waterPlant', async(ctx) => {
     } else {
       ctx.reply('В вашем списке нет растений', mainKeyboard);
     }
+  } else {
+    ctx.reply('Ошибка пользователя');
   }
+})
+
+bot.action('waterAllPlants', async(ctx) => {
+  await ctx.deleteMessage();
+  let user_id = await getUserId(ctx.update.callback_query.from.username);
+  if (user_id > 0) {
+    let waterRes = await waterPlant(0, user_id)
+    waterRes ? ctx.reply(`Все растения политы`, mainKeyboard) : ctx.reply(`Ошибка при обновлении данных по растениям`, mainKeyboard);
+  } else {
+    ctx.reply('Ошибка пользователя');
+  }
+
 })
 
 // обработчик кнопок редактирования
@@ -197,8 +217,8 @@ bot.action(/water_/, async (ctx) => {
   if (!isNaN(parseFloat(plantId))) {
     let userId = await getUserId(ctx.update.callback_query.from.username);
     let waterRes = await waterPlant(parseFloat(plantId), userId)
-    // TODO function should return the number of updated rows, it could be a count of watered plants for the message below
-    waterRes ? ctx.reply(`растение полито  ${plantId}`) : ctx.reply(`Ошибка при обновлении данных! ${plantId}`, mainKeyboard);
+    let plantName = await getPlant(plantId)
+    waterRes ? ctx.reply(`Растение ${plantName} полито`, mainKeyboard) : ctx.reply(`Ошибка при обновлении данных по растению ${plantName}`, mainKeyboard);
   } else {
     ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
   }
@@ -269,6 +289,7 @@ bot.on('text', async (ctx) => {
   }
 });
 
+// the function start watering one plant or all plants depending on function arguments
 async function waterPlant(plantId, userId) {
   if (plantId === 0) {
     return waterPlantByUserId(userId, moment.now())

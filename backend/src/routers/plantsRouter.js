@@ -69,11 +69,9 @@ router.get('/getplant', async (req, res) => {
     } else {
       return res.status(400).json({ error: 'Необходимо передать параметр id или name' });
     }
-
     if (result.length === 0) {
       return res.status(404).json({ error: 'Растение не найдено' });
     }
-
     res.status(200).json(result[0]);
   } catch (err) {
     console.error('Internal server error: ' + err);
@@ -83,7 +81,7 @@ router.get('/getplant', async (req, res) => {
 
 router.put('/water', async (req, res) => {
   try {
-    const {plantId, time} = req.query
+    const {plantid, time} = req.query
     // const plantId = req.query.plantid;
     // const time = req.query.time;
 
@@ -91,7 +89,7 @@ router.put('/water', async (req, res) => {
       UPDATE plants p SET 
       last_watered = ${time},
       is_fine = true 
-      WHERE p.id = ${plantId}
+      WHERE p.id = ${plantid}
     `
 
     await db.query(query);
@@ -99,6 +97,23 @@ router.put('/water', async (req, res) => {
   } catch(err) {
     console.log(err);
     res.status(502).json();
+  }
+})
+
+router.put('/waterall', async (req, res) => {
+  try {
+    const {userid, time}= req.query
+    let query = `
+      UPDATE plants p SET 
+      last_watered = ${time},
+      is_fine = true
+      where user_id = ${userid}
+    `
+    await db.query(query);
+    return res.status(200).json();
+  } catch(err) {
+    console.log(err);
+    return res.status(502).json();
   }
 })
 
@@ -136,25 +151,5 @@ router.delete('/delete', async (req, res) => {
   }
 })
 
-
-
-router.put('/waterall', async (req, res) => {
-  try {
-    const userId = req.query.userid;
-    const time = req.query.time;
-
-    let query = `
-      UPDATE plants p SET 
-      last_watered = ${time},
-      is_fine = true 
-      WHERE p.user_id = ${userId}
-    `
-    await db.query(query);
-    res.status(200).json();
-  } catch(err) {
-    console.log(err);
-    res.status(502).json();
-  }
-})
 
 module.exports = router
