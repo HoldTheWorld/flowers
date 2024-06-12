@@ -1,6 +1,6 @@
 import { Telegraf, Markup  } from 'telegraf';
 import * as dotenv from 'dotenv';
-import { addUser, addPlant, getUserId, getPlants, getPlant, waterPlantByPlantId, waterPlantByUserId, updateFrequency, deletePlant } from "./requests.js";
+import { addUser, addPlant, getUserId, getPlants, getPlant, waterPlantByPlantId, waterPlantByUserId, updateFrequency, deletePlant, updStatus } from "./requests.js";
 import moment from 'moment';
 
 dotenv.config();
@@ -63,15 +63,33 @@ bot.start(async (ctx) => {
     }
 });
 
-function startWatch(user_id, chat_id) {
-  let plants =  getPlants(user_id)
-  interval = setInterval(chat_id => {
-    // проход по базе данных цветов пользователя 
-    // сложение последнего полива и частоты полива 
-    // если превышает текущее время, is_fina = false  , уведомление о поливе 
-  }, watchFreq, chat_id);
+async function startWatch(user_id, chat_id, plants) {
+  
+ 
+  if (plants.length > 0) {
+    interval = setInterval(chat_id => {
+      checkplants()
+      // проход по базе данных цветов пользователя 
+      // сложение последнего полива и частоты полива 
+      // если превышает текущее время, is_fina = false  , уведомление о поливе 
+    }, watchFreq, chat_id);
+  }
 }
 
+async function checkplants(user_id) {
+  let plants = await getPlants(user_id)
+  let currentDate =  moment.utc().format('YYYY-MM-DD')
+  let result = 'Сегодня нужно полить: \n'
+  let needToWater = false
+  plants.forEach(async (plant) => {
+    let nextWateringDate = moment
+                          .utc(plant.last_watered)
+                          .add(plant.watering_frequency, 'days')
+                          .format('YYYY-MM-DD') // дата следующего полива 
+    nextWateringDate >= currentDate ? (result += plant.plant_name + '\n', await updStatus( plants[i].id), needToWater = true) : null        
+    })
+    return needToWater ? result : '';
+}
 // bot.use((ctx, next) => {
 //   console.log('enter middleware');
 //   ctx.state.stage = 'testStage'

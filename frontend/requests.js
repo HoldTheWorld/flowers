@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
 import dns from 'node:dns';
 import * as dotenv from 'dotenv'
+import { log } from 'node:console';
 dotenv.config()
 dns.setDefaultResultOrder('ipv4first');
 
@@ -192,17 +193,15 @@ const deletePlant = async function(plantId) {
   return false
 }
 
+const updStatus = async function(plantId) {
+  try {
 
-const updShedule = async function() {
-  console.log('hello from updShedule');
-
-}
-const getTodaysWateringList = async function() {
-  console.log('hello from getTodaysWateringList');
-
+  } catch (err) {
+    console.log(err);
+  }
 }
 
 
 
 
-export { addUser, addPlant, getUserId, getPlants, getPlant, updateFrequency, waterPlantByPlantId, waterPlantByUserId, deletePlant, updShedule, getTodaysWateringList  }
+export { addUser, addPlant, getUserId, getPlants, getPlant, updateFrequency, waterPlantByPlantId, waterPlantByUserId, deletePlant, updStatus  }
