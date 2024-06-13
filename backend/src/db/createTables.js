@@ -5,7 +5,8 @@ async function createTables() {
     let result = await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(30) NOT NULL UNIQUE
+        name VARCHAR(30) NOT NULL UNIQUE,
+        interval INTEGER
       );
       CREATE TABLE IF NOT EXISTS plants (
         id SERIAL PRIMARY KEY,

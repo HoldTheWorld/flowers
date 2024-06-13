@@ -1,18 +1,16 @@
 import { Telegraf, Markup  } from 'telegraf';
 import * as dotenv from 'dotenv';
-import { addUser, addPlant, getUserId, getPlants, getPlant, waterPlantByPlantId, waterPlantByUserId, updateFrequency, deletePlant, updStatus } from "./requests.js";
+import { addUser, addPlant, getUserId, getPlants, getPlant, waterPlantByPlantId, waterPlantByUserId, updateFrequency, deletePlant, updStatus, setIntId } from "./requests.js";
 import moment from 'moment';
 
 dotenv.config();
 const token = process.env.BOT_TOKEN;
 const bot = new Telegraf(token);
-const watchFreq = moment.duration({ 'hours': 12 }); // check
+const watchFreq = moment.duration({ 'minutes': 1 }); // check
 let interval
 
 // TODO 
 // имя растения должно быть уникальным для конкретного пользователя (сделать проверку при добавлении растения)
-// функция получения имени растения по айди и наборот 
-// это нужно так как инфа о том, какое растение изменить, передается через имя 
 // функции редактирование частоты полива растения 
 // для подтверждения удаления можно какое то всплывающее окно в телеграм?  
 // в обработчиках кнопок есть общие куски кода - унифицировать валидацию !
@@ -20,6 +18,7 @@ let interval
 // codestyle названия переменных 
 // наладить процесс удаления - если сообщению больше Х часов то все падает 
 // return в обработке ошибок в роутере 
+// в роутерах растений обработка результата 
 
 const presetNewPlant = 'Введите название растения и частоту полива в днях (через пробел)'
 const presetIncorrect = 'Введены некорректные значения! Попробуйте снова. Например "Антуриум 7"'
@@ -40,6 +39,7 @@ const mainKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback('Полить все растения', 'waterAllPlants')], // возможно убрать
   [Markup.button.callback('Изменить частоту полива', 'editPlant')],
   [Markup.button.callback('Удалить растение', 'deletePlant')],
+  // [Markup.button.callback('Остановить проверку ', 'deletePlant')],
 ]).resize();
 
 //https://github.com/znezniV/iad-telegram-plantbot
@@ -57,39 +57,53 @@ bot.start(async (ctx) => {
     const result = await addUser(ctx.message.from.username)
     if (result) {
       ctx.reply(`Добро пожаловать, ${ctx.message.from.username}!`, mainKeyboard);
-      // начинается наблюдение за 
+      // начинается наблюдение за цветаами
+      const user_id = await getUserId(ctx.message.from.username);
+      const plants = await getPlants(user_id)
+      let res = await startWatch(user_id, ctx.chat.id, plants)
+      if (!res) {
+        ctx.reply(`Ошибка запуска бота. Обратитесь к администратору`);
+      }
     } else {
       ctx.reply(`Ошибка. Пожалуйста, попробуйте позднее.`);
     }
 });
 
-async function startWatch(user_id, chat_id, plants) {
-  
- 
-  if (plants.length > 0) {
-    interval = setInterval(chat_id => {
-      checkplants()
-      // проход по базе данных цветов пользователя 
-      // сложение последнего полива и частоты полива 
-      // если превышает текущее время, is_fina = false  , уведомление о поливе 
-    }, watchFreq, chat_id);
-  }
+function stopInterval(id) {
+  clearInterval(intervals[id]);
+  delete intervals[id];
 }
 
-async function checkplants(user_id) {
-  let plants = await getPlants(user_id)
-  let currentDate =  moment.utc().format('YYYY-MM-DD')
-  let result = 'Сегодня нужно полить: \n'
-  let needToWater = false
-  plants.forEach(async (plant) => {
-    let nextWateringDate = moment
-                          .utc(plant.last_watered)
-                          .add(plant.watering_frequency, 'days')
-                          .format('YYYY-MM-DD') // дата следующего полива 
-    nextWateringDate >= currentDate ? (result += plant.plant_name + '\n', await updStatus( plants[i].id), needToWater = true) : null        
-    })
-    return needToWater ? result : '';
+async function startWatch(user_id, chat_id, plants) {
+    let interval = setInterval(async () => {
+      let result = await checkplants(plants)
+      if (result.length > 0 ) {
+        bot.telegram.sendMessage(chat_id, result, { reply_markup: mainKeyboard });
+      }
+    }, watchFreq);
+    return await setIntId(user_id, interval)
 }
+
+async function checkplants(plants) {
+  let currentDate = moment.utc().format('YYYY-MM-DD');
+  let result = 'Сегодня нужно полить: \n';
+  let needToWater = false;
+  
+  for (let plant of plants) {
+    let nextWateringDate = moment
+                          .utc(parseInt(plant.last_watered))
+                          .add(parseInt(plant.watering_frequency), 'days')
+                          .format('YYYY-MM-DD');
+                          
+    if (moment(currentDate).isSameOrAfter(nextWateringDate)) {
+      result += plant.plant_name + '\n';
+      // await updStatus(plant.id); // статус кажется лишний 
+      needToWater = true;
+    }
+  }
+  return needToWater ? result : '';
+}
+
 // bot.use((ctx, next) => {
 //   console.log('enter middleware');
 //   ctx.state.stage = 'testStage'
@@ -236,7 +250,7 @@ bot.action(/water_/, async (ctx) => {
     let userId = await getUserId(ctx.update.callback_query.from.username);
     let waterRes = await waterPlant(parseFloat(plantId), userId)
     let plantName = await getPlant(plantId)
-    waterRes ? ctx.reply(`Растение ${plantName} полито`, mainKeyboard) : ctx.reply(`Ошибка при обновлении данных по растению ${plantName}`, mainKeyboard);
+    waterRes ? ctx.reply(`Растение ${plantName[0].plant_name} полито`, mainKeyboard) : ctx.reply(`Ошибка при обновлении данных по растению ${plantName}`, mainKeyboard);
   } else {
     ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
   }

@@ -117,12 +117,9 @@ router.put('/waterall', async (req, res) => {
   }
 })
 
-router.put('/edit', async (req, res) => {
+router.put('/updfreq', async (req, res) => {
   try {
     const {plantid, newfreq } = req.query
-    // const plantId = req.query.plantid;
-    // const newFreq = req.query.newfreq;
-
     let query = `
       UPDATE plants p SET 
       watering_frequency = ${newfreq}
@@ -131,6 +128,26 @@ router.put('/edit', async (req, res) => {
     await db.query(query);
     res.status(200).json();
   } catch(err) {
+    console.log(err);
+    res.status(502).json();
+  }
+})
+
+
+router.put('/updstatus', async (req, res) => {
+  try {
+    const {plantid } = req.query
+    let query = `
+      UPDATE plants p 
+      SET p.is_fine = CASE 
+        WHEN p.is_fine = true THEN false
+        ELSE true
+        END
+      WHERE p.id = ${plantid}
+    `
+  await db.query(query);
+  res.status(200).json();
+  } catch (err) {
     console.log(err);
     res.status(502).json();
   }

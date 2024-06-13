@@ -163,7 +163,7 @@ const waterPlantByUserId = async function(userId, waterTime) {
 
 const updateFrequency = async function(plantId, newFreq) {
   try {
-    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/edit?plantid=${plantId}&newfreq=${newFreq}`, {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/updfreq?plantid=${plantId}&newfreq=${newFreq}`, {
     method: 'PUT',
     credentials: 'include',
     headers: {
@@ -195,13 +195,35 @@ const deletePlant = async function(plantId) {
 
 const updStatus = async function(plantId) {
   try {
-
-  } catch (err) {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/plant/updstatus?plantid=${plantId}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })  
+  return response.ok
+  } catch(err) {
     console.log(err);
   }
+  return false
+}
+
+const setIntId = async function(user_id, interval) {
+  try {
+    const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/user/updint?userid=${user_id}&interval=${interval}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })  
+  return response.ok
+  } catch(err) {
+    console.log(err);
+  }
+  return false
 }
 
 
-
-
-export { addUser, addPlant, getUserId, getPlants, getPlant, updateFrequency, waterPlantByPlantId, waterPlantByUserId, deletePlant, updStatus  }
+export { addUser, addPlant, getUserId, getPlants, getPlant, updateFrequency, waterPlantByPlantId, waterPlantByUserId, deletePlant, updStatus, setIntId }

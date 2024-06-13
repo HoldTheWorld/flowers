@@ -45,4 +45,33 @@ router.get('/getuser', async (req, res) => {
   }
 });
 
+
+router.put('/updint', async (req, res ) => {
+  try {
+    const interval = req.query.interval
+    const user_id = req.query.userid
+    if (!user_id || !interval) {
+      return res.status(400).json({ error: 'Ошибка' });
+    }
+    const result = await db.query(`
+      UPDATE users 
+      SET interval = ${interval}
+      WHERE ID = ${user_id}
+    `);
+
+    // if (result[0].length === 0) {
+    //   return res.status(404).json({ error: 'Пользователь не найден' });
+    // }
+    // const userId = result[0][0].id;
+
+    res.status(200).json()
+  } catch (err) {
+    console.error('Internal server error: ' + err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+})
+
+
+
+
 module.exports = router
