@@ -7,31 +7,20 @@ dotenv.config();
 const token = process.env.BOT_TOKEN;
 const bot = new Telegraf(token);
 const watchFreq = moment.duration({ 'minutes': 1 }); // check
-let interval
 
 // TODO 
 // имя растения должно быть уникальным для конкретного пользователя (сделать проверку при добавлении растения)
-// функции редактирование частоты полива растения 
-// для подтверждения удаления можно какое то всплывающее окно в телеграм?  
 // в обработчиках кнопок есть общие куски кода - унифицировать валидацию !
 // plants router 33 - проверить что USER_ID будет корректно искать
 // codestyle названия переменных 
 // наладить процесс удаления - если сообщению больше Х часов то все падает 
 // return в обработке ошибок в роутере 
 // в роутерах растений обработка результата 
+// как можно реагировать на остановку бота чтобы останавливать интервалы?
 
 const presetNewPlant = 'Введите название растения и частоту полива в днях (через пробел)'
 const presetIncorrect = 'Введены некорректные значения! Попробуйте снова. Например "Антуриум 7"'
 const presetEditPlant = 'Введите новую частоту полива (в днях одним числом) для растения '
-const presetDeletePlant = 'Подтвердите удаление растения '
-
-function yesNoKeyboard() {
-  return Markup.inlineKeyboard([
-      Markup.button.callback('Да', 'yes'),
-      Markup.button.callback('Нет', 'no')
-  ])
-}
-// await ctx.reply(msg, yesNoKeyboard())  
 
 const mainKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback('Добавить растения', 'addPlant')],
@@ -59,8 +48,8 @@ bot.start(async (ctx) => {
       ctx.reply(`Добро пожаловать, ${ctx.message.from.username}!`, mainKeyboard);
       // начинается наблюдение за цветаами
       const user_id = await getUserId(ctx.message.from.username);
-      const plants = await getPlants(user_id)
-      let res = await startWatch(user_id, ctx.chat.id, plants)
+      
+      let res = await startWatch(user_id, ctx.chat.id)
       if (!res) {
         ctx.reply(`Ошибка запуска бота. Обратитесь к администратору`);
       }
@@ -69,14 +58,13 @@ bot.start(async (ctx) => {
     }
 });
 
-function stopInterval(id) {
-  clearInterval(intervals[id]);
-  delete intervals[id];
-}
+// function stopInterval(id) {
+//   clearInterval(id);
+// }
 
-async function startWatch(user_id, chat_id, plants) {
+async function startWatch(user_id, chat_id) {
     let interval = setInterval(async () => {
-      let result = await checkplants(plants)
+      let result = await checkplants(user_id)
       if (result.length > 0 ) {
         bot.telegram.sendMessage(chat_id, result, { reply_markup: mainKeyboard });
       }
@@ -84,10 +72,11 @@ async function startWatch(user_id, chat_id, plants) {
     return await setIntId(user_id, interval)
 }
 
-async function checkplants(plants) {
+async function checkplants(user_id) {
   let currentDate = moment.utc().format('YYYY-MM-DD');
   let result = 'Сегодня нужно полить: \n';
   let needToWater = false;
+  const plants = await getPlants(user_id)
   
   for (let plant of plants) {
     let nextWateringDate = moment
@@ -97,18 +86,11 @@ async function checkplants(plants) {
                           
     if (moment(currentDate).isSameOrAfter(nextWateringDate)) {
       result += plant.plant_name + '\n';
-      // await updStatus(plant.id); // статус кажется лишний 
       needToWater = true;
     }
   }
   return needToWater ? result : '';
 }
-
-// bot.use((ctx, next) => {
-//   console.log('enter middleware');
-//   ctx.state.stage = 'testStage'
-//   next()
-// })
 
 // Обработчик для добавления цветка
 bot.action('addPlant', async (ctx) => {
@@ -256,8 +238,6 @@ bot.action(/water_/, async (ctx) => {
   }
 });
 
-
-
 bot.on('text', async (ctx) => {
   const user_id = await getUserId(ctx.message.from.username);
   const regExp = /^.+\s\d+(\.\d+)?$/
@@ -362,61 +342,5 @@ function splitInput(inputString) {
   return plantData
 }
 
-// // Обработчик для ввода названия цветка и частоты полива
-// bot.on('text', async (ctx) => {
-//   const botState = ctx.state || {} ;
-//   console.log(botState);
-
-//   switch (botState.stage) {
-//     case 'plantName':
-//       if (ctx.message && ctx.message.text) {
-//         const plantName = ctx.message.text;
-//         botState.plantName = plantName;
-        
-//         botState.stage = 'wateringFrequency';
-//         await ctx.reply('Введите частоту полива (в днях):');
-//       } else {
-//         await ctx.reply('Пожалуйста, введите корректное название цветка.');
-//       }
-//       break;
-//     case 'wateringFrequency':
-//       if (ctx.message && ctx.message.text && /^\d+$/.test(ctx.message.text)) {
-//         const wateringFrequency = parseInt(ctx.message.text);
-
-//         const plantInfo = {
-//           user_id: userSession.user_id,
-//           plant_name: userSession.plantName,
-//           watering_frequency: wateringFrequency,
-//         };
-
-//         const result = await addplant(plantInfo);
-
-//         if (result) {
-//           ctx.reply('Цветок успешно добавлен', mainKeyboard);
-//         } else {
-//           ctx.reply('Ошибка добавления цветка!');
-//         }
-
-//         ctx.state = {};
-//       } else {
-//         await ctx.reply('Пожалуйста, введите корректную частоту полива (введите число).');
-//       }
-//       break;
-//   }
-// });
-
-// // Обработчик для кнопок полива цветков
-// bot.action(/water_(.+)/, async (ctx) => {
-//   const plantName = ctx.match[1];
-//   ctx.reply(`Полив цветка "${plantName}" отмечен!`);
-// });
-
-// // Обработчик для кнопки "Отключить напоминания"
-// bot.action('disableReminder', async (ctx) => {
-//   // Реализация отключения напоминаний
-//   // ...
-
-//   ctx.reply('Напоминания успешно отключены!');
-// });
 
 bot.launch();
