@@ -6,7 +6,7 @@ import moment from 'moment';
 dotenv.config();
 const token = process.env.BOT_TOKEN;
 const bot = new Telegraf(token);
-const watchFreq = moment.duration({ 'minutes': 1 }); // check
+const watchFreq = moment.duration({ 'days': 1 }); // check
 
 // TODO 
 // имя растения должно быть уникальным для конкретного пользователя (сделать проверку при добавлении растения)
@@ -194,7 +194,7 @@ bot.action(/edit_/, async(ctx) => {
       ctx.reply('Ошибка пользователя');
     }
   } else {
-    ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
+    ctx.reply(`Отменено`, mainKeyboard)
   }
 })
 
