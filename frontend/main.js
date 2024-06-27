@@ -31,6 +31,11 @@ const mainKeyboard = Markup.inlineKeyboard([
   // [Markup.button.callback('Остановить проверку ', 'deletePlant')],
 ]).resize();
 
+bot.telegram.setMyCommands([
+  { command: 'start', description: 'Запустить отслеживание полива' },
+  { command: 'menu', description: 'Главное меню' },
+]);
+
 //https://github.com/znezniV/iad-telegram-plantbot
 //https://github.com/telegraf/telegraf/issues/705
 // session middleware
@@ -56,6 +61,10 @@ bot.start(async (ctx) => {
     } else {
       ctx.reply(`Ошибка. Пожалуйста, попробуйте позднее.`);
     }
+});
+
+bot.command('menu', (ctx) => {
+  ctx.reply('Главное меню', mainKeyboard);
 });
 
 // function stopInterval(id) {
@@ -94,7 +103,10 @@ async function checkplants(user_id) {
 
 // Обработчик для добавления цветка
 bot.action('addPlant', async (ctx) => {
-  await ctx.deleteMessage();
+  const messageDateTime = ctx.update.callback_query.message.date * 1000
+  if ( checkMessage(messageDateTime)) {
+    await ctx.deleteMessage();
+  }
   const user_id = await getUserId(ctx.update.callback_query.from.username);
   if (user_id > 0) {
     await ctx.replyWithHTML(presetNewPlant, {
@@ -141,9 +153,18 @@ bot.action('deletePlant', async(ctx) => {
   }
 })
 
+function checkMessage(messageDateTime) {
+  const now = moment.now()
+  const hoursDifference = (now - messageDateTime) / (1000 * 60 * 60);
+  return  hoursDifference <= 48
+}
+
 // обработчик для вывода списка к поливу
 bot.action('waterPlant', async(ctx) => {
-  await ctx.deleteMessage();
+  const messageDateTime = ctx.update.callback_query.message.date * 1000
+  if ( checkMessage(messageDateTime)) {
+    await ctx.deleteMessage();
+  }
   let user_id = await getUserId(ctx.update.callback_query.from.username);
   let keyWord = 'water'
   if (user_id > 0) {
@@ -162,7 +183,10 @@ bot.action('waterPlant', async(ctx) => {
 })
 
 bot.action('waterAllPlants', async(ctx) => {
-  await ctx.deleteMessage();
+  const messageDateTime = ctx.update.callback_query.message.date * 1000
+  if ( checkMessage(messageDateTime)) {
+    await ctx.deleteMessage();
+  }
   let user_id = await getUserId(ctx.update.callback_query.from.username);
   if (user_id > 0) {
     let waterRes = await waterPlant(0, user_id)
@@ -175,7 +199,10 @@ bot.action('waterAllPlants', async(ctx) => {
 
 // обработчик кнопок редактирования
 bot.action(/edit_/, async(ctx) => {
-  await ctx.deleteMessage();
+  const messageDateTime = ctx.update.callback_query.message.date * 1000
+  if ( checkMessage(messageDateTime)) {
+    await ctx.deleteMessage();
+  }
   const plantId = ctx.callbackQuery.data.replace('edit_', '');
   if (!isNaN(parseFloat(plantId))) {
     let userId = await getUserId(ctx.update.callback_query.from.username);
@@ -200,7 +227,10 @@ bot.action(/edit_/, async(ctx) => {
 
 // обработчик кнопок удаления
 bot.action(/delete_/, async(ctx) => {
-  await ctx.deleteMessage();
+  const messageDateTime = ctx.update.callback_query.message.date * 1000
+  if ( checkMessage(messageDateTime)) {
+    await ctx.deleteMessage();
+  }
   const plantId = ctx.callbackQuery.data.replace('delete_', '');
   if (!isNaN(parseFloat(plantId))) {
     let userId = await getUserId(ctx.update.callback_query.from.username);
@@ -226,7 +256,10 @@ bot.action(/delete_/, async(ctx) => {
 
 // обработчик кнопок полива
 bot.action(/water_/, async (ctx) => {
-  await ctx.deleteMessage();
+  const messageDateTime = ctx.update.callback_query.message.date * 1000
+  if ( checkMessage(messageDateTime)) {
+    await ctx.deleteMessage();
+  }
   const plantId = ctx.callbackQuery.data.replace('water_', '');
   if (!isNaN(parseFloat(plantId))) {
     let userId = await getUserId(ctx.update.callback_query.from.username);
