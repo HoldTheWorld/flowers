@@ -16,9 +16,9 @@ const watchFreq = moment.duration({ 'days': 1 }); // check
 
 // 2. остановка уведомлений - очищает интервал, останавливает интервалы 
 
-// 3. вывод списка растений с датой последнего полива и частотой!!!
+//3. Кнопка полить все для списка сегодняшнего списка полива 
 
-// 4. codestyle 
+// 5. codestyle 
 //имя растения должно быть уникальным для конкретного пользователя (сделать проверку при добавлении растения)
 // в обработчиках кнопок есть общие куски кода - унифицировать валидацию !
 // plants router 33 - проверить что USER_ID будет корректно искать
@@ -36,7 +36,7 @@ const mainKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback('Полить все растения', 'waterAllPlants')], // возможно убрать
   [Markup.button.callback('Изменить частоту полива', 'editPlant')],
   [Markup.button.callback('Удалить растение', 'deletePlant')],
-  // [Markup.button.callback('Остановить проверку ', 'deletePlant')],
+  [Markup.button.callback('Список растений ', 'getPlants')],
 ]).resize();
 
 bot.telegram.setMyCommands([
@@ -143,6 +143,44 @@ bot.action('editPlant', async(ctx) => {
     ctx.reply('Ошибка пользователя');
   }
 })
+
+bot.action('getPlants', async(ctx) => {
+  let user_id = await getUserId(ctx.update.callback_query.from.username);
+  if (user_id > 0) {
+    let plants = await getPlants(user_id); // array
+
+    if (plants.length) {
+      let maxNameLength = Math.max(...plants.map(item => item.plant_name.length));
+      let maxDateLength = 19; // Длина для формата даты YYYY-MM-DD HH:mm:ss
+      let maxFrequencyLength = Math.max(...plants.map(item => item.watering_frequency.toString().length));
+      
+      // Формируем заголовок
+      let header = `Растение`.padEnd(maxNameLength + 2, ' ') + `Последний полив`.padEnd(maxDateLength + 2, ' ') + `Частота\n`;
+
+      // Функция для склонения слова "день" в зависимости от частоты
+      const getFrequencyString = (frequency) => {
+        if (frequency % 10 === 1 && frequency % 100 !== 11) return `${frequency} день`;
+        if ([2, 3, 4].includes(frequency % 10) && ![12, 13, 14].includes(frequency % 100)) return `${frequency} дня`;
+        return `${frequency} дней`;
+      };
+
+      // Формируем список растений с выравненными столбцами
+      let plantList = plants.reduce((acc, item) => {
+        let name = item.plant_name.padEnd(maxNameLength + 2, ' '); // добавляем 2 пробела для отступа
+        let date = moment(parseInt(item.last_watered)).format('YYYY-MM-DD HH:mm:ss').padEnd(maxDateLength + 2, ' '); // добавляем 2 пробела для отступа
+        let frequency = getFrequencyString(item.watering_frequency).padEnd(maxFrequencyLength + 2, ' '); // добавляем 2 пробела для отступа
+        return acc + `${name}${date}${frequency}\n`;
+      }, '');
+
+      // Используем форматирование кода в Telegram для моноширинного шрифта
+      let formattedPlantList = `\`\`\`\n${header}${plantList}\`\`\``;
+      
+      ctx.reply(`Информация о ваших растениях:\n${formattedPlantList}`, { parse_mode: 'Markdown' });
+    } else {
+      ctx.reply(`Вы не добавили ни одного растения`, mainKeyboard);
+    }
+  }
+});
 
 // обработчик для вывода списка к удалению
 bot.action('deletePlant', async(ctx) => {
