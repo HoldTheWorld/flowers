@@ -2,29 +2,15 @@ import { Telegraf, Markup  } from 'telegraf';
 import * as dotenv from 'dotenv';
 import { addUser, addPlant, getUserId, getPlants, getPlant, waterPlantByPlantId, waterPlantByUserId, updateFrequency, deletePlant, updStatus, setIntId } from "./requests.js";
 import moment from 'moment';
+import cron from 'node-cron'
+import http  from 'http';
+import https  from 'https';
+import fetch from 'node-fetch'
 
 dotenv.config();
 const token = process.env.BOT_TOKEN;
 const bot = new Telegraf(token);
 const watchFreq = moment.duration({ 'days': 1 }); // check
-
-// TODO 
-// 1. добавить crone : 
-// при остановке сервера очищать поле интервал 
-// при нажатии старт проверять, очищено ли поле, если очищено - запускать startWatch, если нет - ничего не делать
-// если при попытке очистить интервал нет соединения с бд... 
-
-// 2. остановка уведомлений - очищает интервал, останавливает интервалы 
-
-//3. Кнопка полить все для списка сегодняшнего списка полива 
-
-// 5. codestyle 
-//имя растения должно быть уникальным для конкретного пользователя (сделать проверку при добавлении растения)
-// в обработчиках кнопок есть общие куски кода - унифицировать валидацию !
-// plants router 33 - проверить что USER_ID будет корректно искать
-// codestyle названия переменных 
-// return в обработке ошибок в роутере 
-// в роутерах растений обработка результата 
 
 const presetNewPlant = 'Введите название растения и частоту полива в днях (через пробел)'
 const presetIncorrect = 'Введены некорректные значения! Попробуйте снова. Например "Антуриум 7"'
@@ -71,6 +57,8 @@ bot.start(async (ctx) => {
     }
 });
 
+
+
 bot.command('menu', (ctx) => {
   ctx.reply('Главное меню', mainKeyboard);
 });
@@ -79,15 +67,26 @@ bot.command('menu', (ctx) => {
 //   clearInterval(id);
 // }
 
+
 async function startWatch(user_id, chat_id) {
-    let interval = setInterval(async () => {
-      let result = await checkplants(user_id)
-      if (result.length > 0 ) {
-        bot.telegram.sendMessage(chat_id, result, { reply_markup: mainKeyboard });
-      }
-    }, watchFreq);
-    return await setIntId(user_id, interval)
+  cron.schedule('0 9 * * *', () => {
+    console.log('trying to schedule');
+  });
+  return true
 }
+  
+
+
+
+// async function startWatch(user_id, chat_id) {
+//     let interval = setInterval(async () => {
+//       let result = await checkplants(user_id)
+//       if (result.length > 0 ) {
+//         bot.telegram.sendMessage(chat_id, result, { reply_markup: mainKeyboard });
+//       }
+//     }, watchFreq);
+//     return await setIntId(user_id, interval)
+// }
 
 async function checkplants(user_id) {
   let currentDate = moment.utc().format('YYYY-MM-DD');
@@ -421,5 +420,47 @@ function splitInput(inputString) {
   return plantData
 }
 
-
 bot.launch();
+
+
+const performRequest = async () => {
+    try {
+        const response = await fetch(`http://${process.env.DB_HOST}:${process.env.DB_PORT}/user/updint?userid=${0}&interval=${0}`, {
+            method: 'PUT',
+        });
+
+        if (response.ok) {
+            const data = await response.text(); // Получаем текст ответа
+            return data;
+        } else {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+    } catch (error) {
+        throw error;
+    }
+};
+
+process.on('SIGINT', async () => {
+    console.log('SIGINT received. Shutting down...');
+    const maxRetries = 5;
+    let attempt = 0;
+    let success = false;
+
+    while (attempt < maxRetries && !success) {
+        try {
+            await performRequest();
+            success = true;
+            console.log('Intervals cleared successfully');
+        } catch (err) {
+            console.log(`Attempt ${attempt + 1} failed: ${err}`);
+            attempt++;
+            if (attempt < maxRetries) {
+                console.log('Retrying...');
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retrying
+            } else {
+                console.log('Max retries reached. Unable to complete the request.');
+            }
+        }
+    }
+    process.exit(success ? 0 : 1); // Exit with status code 0 if successful, otherwise 1
+});
