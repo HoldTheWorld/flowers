@@ -6,7 +6,8 @@ async function createTables() {
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name VARCHAR(30) NOT NULL UNIQUE,
-        interval INTEGER
+        interval INTEGER,
+        chat_id BIGINT
       );
       CREATE TABLE IF NOT EXISTS plants (
         id SERIAL PRIMARY KEY,

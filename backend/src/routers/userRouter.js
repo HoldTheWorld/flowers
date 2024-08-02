@@ -3,10 +3,11 @@ const db = require('../db/connection.js');
 
 
 router.post('/add', async (req, res) => {
+const { user_name, chat_id } = req.body;
   try {
     await db.query(`
-    INSERT INTO users (NAME)
-    VALUES ('` + req.body.user_name + `')
+    INSERT INTO users (NAME, INTERVAL, CHAT_ID)
+    VALUES ('` + user_name +  `', '0', ` + chat_id + `)
     `)
     res.status(200).json()
   } catch(err) {
@@ -44,6 +45,19 @@ router.get('/getuser', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+router.get('/getallusers', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT *
+      FROM users
+    `);
+    res.status(200).json(result[0]);
+  } catch (err) {
+    console.error('Internal server error: ' + err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+})
 
 router.put('/updint', async (req, res ) => {
   try {
