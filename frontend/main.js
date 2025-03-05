@@ -265,7 +265,8 @@ bot.action(/water_/, async (ctx) => {
     let userId = await getUserId(ctx.update.callback_query.from.username);
     let waterRes = await waterPlant(parseFloat(plantId), userId)
     let plantName = await getPlant(plantId)
-    waterRes ? ctx.reply(`Растение ${plantName[0].plant_name} полито`, mainKeyboard) : ctx.reply(`Ошибка при обновлении данных по растению ${plantName}`, mainKeyboard);
+    plantName = plantName.length ? plantName[0].plant_name : ''
+    waterRes ? ctx.reply(`Растение ${plantName} полито`, mainKeyboard) : ctx.reply(`Ошибка при обновлении данных по растению ${plantName}`, mainKeyboard);
   } else {
     ctx.reply(`Непредвиденная ошибка`, mainKeyboard)
   }
