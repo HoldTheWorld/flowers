@@ -8,16 +8,6 @@ const token = process.env.BOT_TOKEN;
 const bot = new Telegraf(token);
 const watchFreq = moment.duration({ 'days': 1 }); // check
 
-// TODO 
-// имя растения должно быть уникальным для конкретного пользователя (сделать проверку при добавлении растения)
-// в обработчиках кнопок есть общие куски кода - унифицировать валидацию !
-// plants router 33 - проверить что USER_ID будет корректно искать
-// codestyle названия переменных 
-// наладить процесс удаления - если сообщению больше Х часов то все падает 
-// return в обработке ошибок в роутере 
-// в роутерах растений обработка результата 
-// как можно реагировать на остановку бота чтобы останавливать интервалы?
-
 const presetNewPlant = 'Введите название растения и частоту полива в днях (через пробел)'
 const presetIncorrect = 'Введены некорректные значения! Попробуйте снова. Например "Антуриум 7"'
 const presetEditPlant = 'Введите новую частоту полива (в днях одним числом) для растения '
@@ -35,17 +25,6 @@ bot.telegram.setMyCommands([
   { command: 'start', description: 'Запустить отслеживание полива' },
   { command: 'menu', description: 'Главное меню' },
 ]);
-
-//https://github.com/znezniV/iad-telegram-plantbot
-//https://github.com/telegraf/telegraf/issues/705
-// session middleware
-
-// bot.action(['yes', 'no'], ctx => {
-//   if (ctx.callbackQuery.data === 'yes') {
-//   } else {
-//       ctx.deleteMessage()
-//   }
-// })
 
 bot.start(async (ctx) => {
     const result = await addUser(ctx.message.from.username)
@@ -66,10 +45,6 @@ bot.start(async (ctx) => {
 bot.command('menu', (ctx) => {
   ctx.reply('Главное меню', mainKeyboard);
 });
-
-// function stopInterval(id) {
-//   clearInterval(id);
-// }
 
 async function startWatch(user_id, chat_id) {
     let interval = setInterval(async () => {
