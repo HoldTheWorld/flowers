@@ -7,7 +7,14 @@
     "start": "nodemon main.js",
     "connectdb": "nodemon ./src/db/connection.js",
     "createtabs": "node ./src/db/createTables.js",
-    "droptabs": "node ./src/db/dropTables.js"
+    "droptabs": "node ./src/db/dropTables.js",
+    "dev": "NODE_ENV=development nodemon main.js",
+    "prod": "NODE_ENV=production node main.js",
+    "logs:view": "node scripts/view-logs.js",
+    "logs:monitor": "node scripts/monitor-logs.js",
+    "logs:errors": "node scripts/view-logs.js errors",
+    "logs:all": "node scripts/view-logs.js all",
+    "logs:search": "node scripts/view-logs.js search"
   },
   "keywords": [],
   "author": "",
@@ -16,9 +23,14 @@
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "nodemon": "^2.0.22",
+    "express-rate-limit": "^6.11.2",
+    "helmet": "^7.2.0",
+    "nodemon": "^3.1.10",
     "pg": "^8.10.0",
     "pg-hstore": "^2.3.4",
-    "sequelize": "^6.31.1"
+    "sequelize": "^6.31.1",
+    "tail": "^2.2.6",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
   }
 }

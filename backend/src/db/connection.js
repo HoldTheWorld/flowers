@@ -1,4 +1,5 @@
 const {Sequelize} = require('sequelize');
+const { logInfo, logError } = require('../utils/logger');
 require('dotenv').config();
 
 const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASS, {
@@ -9,9 +10,15 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
   async function  testBD() {
     try {
       await sequelize.authenticate();
-      console.log('Connection has been established successfully.');
+      logInfo('Connection has been established successfully.', {
+        operation: 'database_connection',
+        context: 'sequelize_authenticate'
+      });
     } catch (error) {
-      console.error('Unable to connect to the database:', error);
+      logError(error, {
+        operation: 'database_connection',
+        context: 'sequelize_authenticate_error'
+      });
     }
   
   }
@@ -20,11 +27,16 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
   async function closeConnection() {
     try {
       await sequelize.close();
-      console.log('connection closed');
+      logInfo('connection closed', {
+        operation: 'database_connection',
+        context: 'sequelize_close'
+      });
     } catch (err) {
-      console.error('unable to close', err);
+      logError(err, {
+        operation: 'database_connection',
+        context: 'sequelize_close_error'
+      });
     }
   }
-  // closeConnection()
 
   module.exports = sequelize;

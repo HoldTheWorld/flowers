@@ -1,35 +1,20 @@
-const db = require('./connection');
+const sequelize = require('./connection');
+const { User, Plant } = require('./models');
+const { logInfo, logError } = require('../utils/logger');
 
 async function createTables() {
   try {
-    let result = await db.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(30) NOT NULL UNIQUE,
-        interval INTEGER
-      );
-      CREATE TABLE IF NOT EXISTS plants (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users (id) ON DELETE CASCADE,
-        plant_name VARCHAR(30) NOT NULL,
-        watering_frequency INTEGER,
-        last_watered BIGINT,
-        is_fine BOOLEAN
-      );
-    `)
-    console.log('TABLES WERE CREATED');
+    await sequelize.sync({ force: true });
+    logInfo('TABLES WERE CREATED/CHECKED', {
+      operation: 'create_tables',
+      context: 'sequelize_sync'
+    });
   } catch (err) {
-    console.log('ERROR WHILE CREATING TABLES');
-    console.log(err);
+    logError(err, {
+      operation: 'create_tables',
+      context: 'sequelize_sync_error'
+    });
   }
 }
 
 createTables()
-
-      // CREATE TABLE IF NOT EXISTS schedules (
-      //   id SERIAL PRIMARY KEY,
-      //   flower_id INTEGER REFERENCES flowers (id) ON DELETE CASCADE,
-      //   last_watered INTEGER,
-      //   is_mutted BOOLEAN,
-      //   is_fine BOOLEAN
-      // );
